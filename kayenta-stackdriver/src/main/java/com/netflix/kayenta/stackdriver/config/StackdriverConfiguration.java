@@ -29,44 +29,47 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
+import java.util.stream.Stream;
+
 @Configuration
 @ConditionalOnProperty("kayenta.stackdriver.enabled")
 @ComponentScan({"com.netflix.kayenta.stackdriver"})
 @Slf4j
 public class StackdriverConfiguration {
 
-  @Bean
-  @ConfigurationProperties("kayenta.stackdriver")
-  StackdriverConfigurationProperties stackdriverConfigurationProperties() {
-    return new StackdriverConfigurationProperties();
-  }
+    @Bean
+    @ConfigurationProperties("kayenta.stackdriver")
+    StackdriverConfigurationProperties stackdriverConfigurationProperties() {
+        return new StackdriverConfigurationProperties();
+    }
 
-  @Bean
-  @ConfigurationProperties("kayenta.stackdriver.test-controller-defaults")
-  StackdriverConfigurationTestControllerDefaultProperties
-      stackdriverConfigurationTestControllerDefaultProperties() {
-    return new StackdriverConfigurationTestControllerDefaultProperties();
-  }
+    @Bean
+    @ConfigurationProperties("kayenta.stackdriver.test-controller-defaults")
+    StackdriverConfigurationTestControllerDefaultProperties
+    stackdriverConfigurationTestControllerDefaultProperties() {
+        return new StackdriverConfigurationTestControllerDefaultProperties();
+    }
 
-  @Bean
-  @DependsOn({"registerGoogleCredentials"})
-  MetricsService stackdriverMetricsService(
-      AccountCredentialsRepository accountCredentialsRepository) {
-    StackdriverMetricsService.StackdriverMetricsServiceBuilder stackdriverMetricsServiceBuilder =
-        StackdriverMetricsService.builder();
+    @Bean
+    @DependsOn({"registerGoogleCredentials"})
+    MetricsService stackdriverMetricsService(
+            AccountCredentialsRepository accountCredentialsRepository) {
+        StackdriverMetricsService.StackdriverMetricsServiceBuilder stackdriverMetricsServiceBuilder = StackdriverMetricsService.builder();
 
-    accountCredentialsRepository.getAll().stream()
-        .filter(c -> c instanceof GoogleNamedAccountCredentials)
-        .filter(c -> c.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE))
-        .map(c -> c.getName())
-        .forEach(stackdriverMetricsServiceBuilder::accountName);
+        StackdriverMetricsService stackdriverMetricsService = stackdriverMetricsServiceBuilder.build();
+        Stream<AccountCredentials> accounts = accountCredentialsRepository.getAllOf(AccountCredentials.Type.METRICS_STORE).stream()
+                .filter(c -> c instanceof GoogleNamedAccountCredentials);
 
-    StackdriverMetricsService stackdriverMetricsService = stackdriverMetricsServiceBuilder.build();
+        accounts.forEach(it -> {
+            ((GoogleNamedAccountCredentials) it).setMetricsService(stackdriverMetricsService);
+            accountCredentialsRepository.save(it);
+        });
 
-    log.info(
-        "Populated StackdriverMetricsService with {} Google accounts.",
-        stackdriverMetricsService.getAccountNames().size());
 
-    return stackdriverMetricsService;
-  }
+        log.info(
+                "Populated StackdriverMetricsService with {} Google accounts.",
+                accounts.size());
+
+        return stackdriverMetricsService;
+    }
 }

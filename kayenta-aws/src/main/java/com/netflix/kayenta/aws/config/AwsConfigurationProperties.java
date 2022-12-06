@@ -18,9 +18,11 @@ package com.netflix.kayenta.aws.config;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
 import lombok.Getter;
 
 public class AwsConfigurationProperties {
 
-  @Getter private List<AwsManagedAccount> accounts = new ArrayList<>();
+  @Getter private List<AwsNamedAccountCredentials> accounts = new ArrayList<>();
 }

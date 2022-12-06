@@ -17,13 +17,7 @@
 package com.netflix.kayenta.stackdriver.metrics;
 
 import com.google.api.services.monitoring.v3.Monitoring;
-import com.google.api.services.monitoring.v3.model.ListMetricDescriptorsResponse;
-import com.google.api.services.monitoring.v3.model.ListTimeSeriesResponse;
-import com.google.api.services.monitoring.v3.model.Metric;
-import com.google.api.services.monitoring.v3.model.MetricDescriptor;
-import com.google.api.services.monitoring.v3.model.MonitoredResource;
-import com.google.api.services.monitoring.v3.model.Point;
-import com.google.api.services.monitoring.v3.model.TimeSeries;
+import com.google.api.services.monitoring.v3.model.*;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
@@ -38,18 +32,6 @@ import com.netflix.kayenta.stackdriver.canary.StackdriverCanaryScope;
 import com.netflix.kayenta.stackdriver.config.StackdriverConfigurationProperties;
 import com.netflix.spectator.api.Id;
 import com.netflix.spectator.api.Registry;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Singular;
@@ -59,11 +41,16 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import javax.validation.constraints.NotNull;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 @Builder
 @Slf4j
-public class StackdriverMetricsService implements MetricsService {
-
-  @NotNull @Singular @Getter private List<String> accountNames;
+public class StackdriverMetricsService implements MetricsService<GoogleNamedAccountCredentials> {
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -78,21 +65,17 @@ public class StackdriverMetricsService implements MetricsService {
     return StackdriverCanaryMetricSetQueryConfig.SERVICE_TYPE;
   }
 
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
 
   @Override
   public String buildQuery(
-      String metricsAccountName,
+          GoogleNamedAccountCredentials credentialsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
     StackdriverCanaryMetricSetQueryConfig queryConfig =
         (StackdriverCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
     StackdriverCanaryScope stackdriverCanaryScope = (StackdriverCanaryScope) canaryScope;
-    String projectId = determineProjectId(metricsAccountName, stackdriverCanaryScope);
+    String projectId = Optional.ofNullable(stackdriverCanaryScope.getProject()).filter(Predicate.not(String::isEmpty)).orElse(credentialsAccount.getProject());
     String location = stackdriverCanaryScope.getLocation();
     String scope = stackdriverCanaryScope.getScope();
     String resourceType =
@@ -262,7 +245,7 @@ public class StackdriverMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String metricsAccountName,
+          GoogleNamedAccountCredentials stackdriverCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
@@ -276,12 +259,10 @@ public class StackdriverMetricsService implements MetricsService {
     }
 
     StackdriverCanaryScope stackdriverCanaryScope = (StackdriverCanaryScope) canaryScope;
-    GoogleNamedAccountCredentials stackdriverCredentials =
-        accountCredentialsRepository.getRequiredOne(metricsAccountName);
     Monitoring monitoring = stackdriverCredentials.getMonitoring();
     StackdriverCanaryMetricSetQueryConfig stackdriverMetricSetQuery =
         (StackdriverCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
-    String projectId = determineProjectId(metricsAccountName, stackdriverCanaryScope);
+    String projectId = Optional.ofNullable(stackdriverCanaryScope.getProject()).filter(Predicate.not(String::isEmpty)).orElse(stackdriverCredentials.getProject());
     String location = stackdriverCanaryScope.getLocation();
     String resourceType =
         StringUtils.hasText(stackdriverMetricSetQuery.getResourceType())
@@ -449,23 +430,9 @@ public class StackdriverMetricsService implements MetricsService {
     return metricSetList;
   }
 
-  private String determineProjectId(
-      String metricsAccountName, StackdriverCanaryScope stackdriverCanaryScope) {
-    String projectId = stackdriverCanaryScope.getProject();
-
-    if (StringUtils.isEmpty(projectId)) {
-      GoogleNamedAccountCredentials stackdriverCredentials =
-          accountCredentialsRepository.getRequiredOne(metricsAccountName);
-
-      projectId = stackdriverCredentials.getProject();
-    }
-
-    return projectId;
-  }
-
   @Override
-  public List<Map> getMetadata(String metricsAccountName, String filter) {
-    if (!StringUtils.isEmpty(filter)) {
+  public List<Map> getMetadata(GoogleNamedAccountCredentials credentials, String filter) {
+    if (!StringUtils.hasText(filter)) {
       String lowerCaseFilter = filter.toLowerCase();
 
       return metricDescriptorsCache.stream()

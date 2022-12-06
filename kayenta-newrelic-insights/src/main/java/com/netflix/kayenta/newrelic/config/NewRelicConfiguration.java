@@ -128,8 +128,7 @@ public class NewRelicConfiguration {
         accountCredentialsBuilder.supportedTypes(supportedTypes);
       }
 
-      accountCredentialsRepository.save(name, accountCredentialsBuilder.build());
-      metricsServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(accountCredentialsBuilder.build());
     }
 
     log.info(

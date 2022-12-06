@@ -1,11 +1,11 @@
 /*
- * Copyright 2017 Netflix, Inc.
+ * Copyright 2022 Netflix, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.s3.storage;
+package com.netflix.kayenta.aws.storage;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
@@ -28,52 +28,40 @@ import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.util.Retry;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
+import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import javax.validation.constraints.NotNull;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
-import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class S3StorageService implements StorageService {
+@Component
+public class S3StorageService implements StorageService<AwsNamedAccountCredentials> {
 
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry an operation
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
 
-  @NotNull private ObjectMapper objectMapper;
-
-  @NotNull @Singular @Getter private List<String> accountNames;
-
-  @Autowired AccountCredentialsRepository accountCredentialsRepository;
-
+  @NotNull @Autowired private ObjectMapper objectMapper;
   @Autowired CanaryConfigIndex canaryConfigIndex;
-
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
 
   private final Retry retry = new Retry();
 
   /** Check to see if the bucket exists, creating it if it is not there. */
-  public void ensureBucketExists(String accountName) {
-    AwsNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+  public void ensureBucketExists(AwsNamedAccountCredentials credentials) {
 
-    AmazonS3 amazonS3 = credentials.getAmazonS3();
+    AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
     String region = credentials.getRegion();
 
@@ -98,11 +86,9 @@ public class S3StorageService implements StorageService {
   }
 
   @Override
-  public <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
+  public <T> T loadObject(AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException {
-    AwsNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
-    AmazonS3 amazonS3 = credentials.getAmazonS3();
+    AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
     String path;
 
@@ -156,22 +142,19 @@ public class S3StorageService implements StorageService {
     return objectMapper.readValue(s3Object.getObjectContent(), typeReference);
   }
 
-  @Override
-  public <T> void storeObject(
-      String accountName,
+  public <T> void storeObject(AwsNamedAccountCredentials credentials,
       ObjectType objectType,
       String objectKey,
       T obj,
       String filename,
       boolean isAnUpdate) {
-    AwsNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
-    AmazonS3 amazonS3 = credentials.getAmazonS3();
+
+    AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
     String group = objectType.getGroup();
     String path = buildS3Key(credentials, objectType, group, objectKey, filename);
 
-    ensureBucketExists(accountName);
+    ensureBucketExists(credentials);
 
     long updatedTimestamp = -1;
     String correlationId = null;
@@ -280,10 +263,9 @@ public class S3StorageService implements StorageService {
   }
 
   @Override
-  public void deleteObject(String accountName, ObjectType objectType, String objectKey) {
-    AwsNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
-    AmazonS3 amazonS3 = credentials.getAmazonS3();
+  public void deleteObject(AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey) {
+
+    AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
     String path = resolveSingularPath(objectType, objectKey, credentials, amazonS3, bucket);
 
@@ -353,9 +335,7 @@ public class S3StorageService implements StorageService {
 
   @Override
   public List<Map<String, Object>> listObjectKeys(
-      String accountName, ObjectType objectType, List<String> applications, boolean skipIndex) {
-    AwsNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+          AwsNamedAccountCredentials credentials, ObjectType objectType, List<String> applications, boolean skipIndex) {
 
     if (!skipIndex && objectType == ObjectType.CANARY_CONFIG) {
       Set<Map<String, Object>> canaryConfigSet =
@@ -363,12 +343,12 @@ public class S3StorageService implements StorageService {
 
       return Lists.newArrayList(canaryConfigSet);
     } else {
-      AmazonS3 amazonS3 = credentials.getAmazonS3();
+      AmazonS3 amazonS3 = credentials.getCredentials();
       String bucket = credentials.getBucket();
       String group = objectType.getGroup();
       String prefix = buildTypedFolder(credentials, group);
 
-      ensureBucketExists(accountName);
+      ensureBucketExists(credentials);
 
       int skipToOffset = prefix.length() + 1; // + Trailing slash
       List<Map<String, Object>> result = new ArrayList<>();

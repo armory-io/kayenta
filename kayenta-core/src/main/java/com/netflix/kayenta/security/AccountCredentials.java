@@ -17,22 +17,40 @@
 package com.netflix.kayenta.security;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.retrofit.config.RemoteService;
+import com.netflix.kayenta.storage.StorageService;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Collections;
 import java.util.List;
 
-public interface AccountCredentials<T> {
-  String getName();
 
-  String getType();
+@Getter
+@Setter
+public abstract class AccountCredentials<T extends AccountCredentials> {
+  private String name;
+  //atlas/gcs/newrelic/etc.
+  public abstract String getType();
 
-  List<Type> getSupportedTypes();
+  //I'd ARGUE this should be on an extension that's KaynetAccountcredentials instead.
+  public abstract List<Type> getSupportedTypes();
 
-  /*
-   * If this account provides a metrics service, return a list of valid "location" values for the metric
-   * scope.  This is used as a UI hint.  If the service cannot enumerate the locations, it should return
-   * an empty list, and the UI may provide an input field rather than a selection.
-   */
-  default List<String> getLocations() {
+
+  public enum Type {
+    METRICS_STORE,
+    OBJECT_STORE,
+    CONFIGURATION_STORE,
+    REMOTE_JUDGE;
+  }
+
+  @JsonIgnore
+  public abstract <T> T getCredentials();
+  public abstract MetricsService<T> getMetricsService();
+  public abstract StorageService<T> getStorageService();
+
+  public List<String> getLocations() {
     return Collections.emptyList();
   }
 
@@ -42,17 +60,9 @@ public interface AccountCredentials<T> {
    * present even if locations() returns an empty list; this would imply that there are commonly
    * used locations, but the full list is unknown by the metrics service.
    */
-  default List<String> getRecommendedLocations() {
+  public List<String> getRecommendedLocations() {
     return Collections.emptyList();
   }
 
-  @JsonIgnore
-  T getCredentials();
 
-  enum Type {
-    METRICS_STORE,
-    OBJECT_STORE,
-    CONFIGURATION_STORE,
-    REMOTE_JUDGE
-  }
 }

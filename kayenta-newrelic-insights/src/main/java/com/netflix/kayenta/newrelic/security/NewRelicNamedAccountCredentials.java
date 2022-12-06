@@ -17,6 +17,8 @@
 package com.netflix.kayenta.newrelic.security;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.newrelic.metrics.NewRelicMetricsService;
 import com.netflix.kayenta.newrelic.service.NewRelicRemoteService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
@@ -28,7 +30,7 @@ import lombok.Singular;
 
 @Builder
 @Data
-public class NewRelicNamedAccountCredentials implements AccountCredentials<NewRelicCredentials> {
+public class NewRelicNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
 
@@ -37,11 +39,23 @@ public class NewRelicNamedAccountCredentials implements AccountCredentials<NewRe
   @NotNull private NewRelicCredentials credentials;
 
   @NotNull private RemoteService endpoint;
+  private MetricsService accountService;
 
   @Override
   public String getType() {
     return "newrelic";
   }
 
+  @Override
+  public MetricsService getServiceForType(Type type) {
+    return accountService;
+  }
+
+  public NewRelicRemoteService getService() {
+    return newRelicRemoteService;
+  }
+
   @JsonIgnore NewRelicRemoteService newRelicRemoteService;
+
+
 }

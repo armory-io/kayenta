@@ -16,34 +16,34 @@
 
 package com.netflix.kayenta.storage;
 
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
+
 import java.util.List;
 import java.util.Map;
 
-public interface StorageService {
-  boolean servicesAccount(String accountName);
+public interface StorageService<Y extends AccountCredentials> {
 
-  <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
-      throws IllegalArgumentException, NotFoundException;
+  <T> T loadObject(Y accountCredentials, ObjectType objectType, String objectKey)
+          throws IllegalArgumentException, NotFoundException;
 
   <T> void storeObject(
-      String accountName,
-      ObjectType objectType,
-      String objectKey,
-      T obj,
-      String filename,
-      boolean isAnUpdate);
+          Y accountCredentials,
+          ObjectType objectType,
+          String objectKey,
+          T obj,
+          String filename,
+          boolean isAnUpdate);
 
-  void deleteObject(String accountName, ObjectType objectType, String objectKey);
+  void deleteObject(Y credentials, ObjectType objectType, String objectKey);
 
-  List<Map<String, Object>> listObjectKeys(
-      String accountName, ObjectType objectType, List<String> applications, boolean skipIndex);
+  List<Map<String, Object>> listObjectKeys(Y credentials, ObjectType objectType, List<String> applications, boolean skipIndex);
 
-  default <T> void storeObject(String accountName, ObjectType objectType, String objectKey, T obj) {
-    storeObject(accountName, objectType, objectKey, obj, null, true);
+  default <T> void storeObject(Y credentials, ObjectType objectType, String objectKey, T obj) {
+    storeObject(credentials, objectType, objectKey, obj, null, true);
   }
 
-  default List<Map<String, Object>> listObjectKeys(String accountName, ObjectType objectType) {
-    return listObjectKeys(accountName, objectType, null, false);
+  default List<Map<String, Object>> listObjectKeys(Y credentials, ObjectType objectType) {
+    return listObjectKeys(credentials, objectType, null, false);
   }
 }

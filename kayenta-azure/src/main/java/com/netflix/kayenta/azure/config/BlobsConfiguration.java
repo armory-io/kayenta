@@ -1,7 +1,7 @@
 /*
- * Copyright 2019 Microsoft Corporation.
+ * Copyright 2022 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License")
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.blobs.config;
+package com.netflix.kayenta.azure.config;
 
 import com.netflix.kayenta.azure.security.AzureNamedAccountCredentials;
-import com.netflix.kayenta.blobs.storage.BlobsStorageService;
+import com.netflix.kayenta.azure.storage.BlobsStorageService;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +27,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
+
+import java.util.stream.StreamSupport;
 
 @Configuration
 @EnableConfigurationProperties
@@ -39,10 +41,9 @@ public class BlobsConfiguration {
   @DependsOn({"registerAzureCredentials"})
   public BlobsStorageService blobsStorageService(
       AccountCredentialsRepository accountCredentialsRepository) {
-    BlobsStorageService.BlobsStorageServiceBuilder blobsStorageServiceBuilder =
-        BlobsStorageService.builder();
+    BlobsStorageService.BlobsStorageServiceBuilder blobsStorageServiceBuilder = BlobsStorageService.builder();
 
-    accountCredentialsRepository.getAll().stream()
+  StreamSupport.stream(accountCredentialsRepository.findAll().spliterator(), true)
         .filter(c -> c instanceof AzureNamedAccountCredentials)
         .filter(c -> c.getSupportedTypes().contains(AccountCredentials.Type.OBJECT_STORE))
         .map(c -> c.getName())

@@ -19,16 +19,19 @@ package com.netflix.kayenta.google.security;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.api.services.monitoring.v3.Monitoring;
 import com.google.api.services.storage.Storage;
+import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
+
+import com.netflix.kayenta.storage.StorageService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
 @Builder
 @Data
-public class GoogleNamedAccountCredentials implements AccountCredentials<GoogleClientFactory> {
+public class GoogleNamedAccountCredentials extends AccountCredentials<GoogleNamedAccountCredentials> {
 
   @NotNull private String name;
 
@@ -41,6 +44,8 @@ public class GoogleNamedAccountCredentials implements AccountCredentials<GoogleC
   private String bucket;
   private String bucketLocation;
   private String rootFolder;
+  private MetricsService<GoogleNamedAccountCredentials> metricsService;
+  private StorageService<GoogleNamedAccountCredentials> storageService;
 
   @Override
   public String getType() {
@@ -54,4 +59,14 @@ public class GoogleNamedAccountCredentials implements AccountCredentials<GoogleC
   @JsonIgnore private Monitoring monitoring;
 
   @JsonIgnore private Storage storage;
+
+  @Override
+  public MetricsService<GoogleNamedAccountCredentials> getMetricsService() {
+    return metricsService;
+  }
+
+  @Override
+  public StorageService<GoogleNamedAccountCredentials> getStorageService() {
+    return storageService;
+  }
 }

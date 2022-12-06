@@ -27,7 +27,7 @@ import org.junit.Test;
 public class WavefrontMetricsServiceTest {
 
   private WavefrontMetricsService wavefrontMetricsService =
-      new WavefrontMetricsService(null, null, null);
+      new WavefrontMetricsService(null, null);
   private static final String METRIC_NAME = "example.metric.name";
   private static final String SCOPE = "env=test";
   private static final String AGGREGATE = "avg";
@@ -37,7 +37,7 @@ public class WavefrontMetricsServiceTest {
     CanaryScope canaryScope = createScope("");
     CanaryMetricConfig canaryMetricSetQueryConfig = queryConfig(AGGREGATE);
     String query =
-        wavefrontMetricsService.buildQuery("", null, canaryMetricSetQueryConfig, canaryScope);
+        wavefrontMetricsService.buildQuery(null, null, canaryMetricSetQueryConfig, canaryScope);
     assertThat(query, is(AGGREGATE + "(ts(" + METRIC_NAME + "))"));
   }
 
@@ -46,7 +46,7 @@ public class WavefrontMetricsServiceTest {
     CanaryScope canaryScope = createScope(SCOPE);
     CanaryMetricConfig canaryMetricSetQueryConfig = queryConfig("");
     String query =
-        wavefrontMetricsService.buildQuery("", null, canaryMetricSetQueryConfig, canaryScope);
+        wavefrontMetricsService.buildQuery(null, null, canaryMetricSetQueryConfig, canaryScope);
     assertThat(query, is("ts(" + METRIC_NAME + ", " + SCOPE + ")"));
   }
 
@@ -55,7 +55,7 @@ public class WavefrontMetricsServiceTest {
     CanaryScope canaryScope = createScope(SCOPE);
     CanaryMetricConfig canaryMetricSetQueryConfig = queryConfig("avg");
     String query =
-        wavefrontMetricsService.buildQuery("", null, canaryMetricSetQueryConfig, canaryScope);
+        wavefrontMetricsService.buildQuery(null, null, canaryMetricSetQueryConfig, canaryScope);
     assertThat(query, is(AGGREGATE + "(ts(" + METRIC_NAME + ", " + SCOPE + "))"));
   }
 

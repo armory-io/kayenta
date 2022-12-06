@@ -21,7 +21,6 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
-import com.netflix.kayenta.storage.StorageServiceRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,36 +31,30 @@ import lombok.RequiredArgsConstructor;
 public class MetricSetPairListService {
 
   private final AccountCredentialsRepository accountCredentialsRepository;
-  private final StorageServiceRepository storageServiceRepository;
 
   public List<MetricSetPair> loadMetricSetPairList(String accountName, String metricSetPairListId) {
-    var resolvedAccountName = getAccount(accountName);
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
 
-    return storageService.loadObject(
-        resolvedAccountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+    return storageService.loadObject(accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
   }
 
   public Optional<MetricSetPair> loadMetricSetPair(
       String accountName, String metricSetPairListId, String metricSetPairId) {
-    String resolvedAccountName = getAccount(accountName);
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
 
     List<MetricSetPair> metricSetPairList =
-        storageService.loadObject(
-            resolvedAccountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+        storageService.loadObject(accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
     return metricSetPairList.stream()
         .filter(metricSetPair -> metricSetPair.getId().equals(metricSetPairId))
         .findFirst();
   }
 
   public String storeMetricSetPairList(String accountName, List<MetricSetPair> metricSetPairList) {
-    String resolvedAccountName = getAccount(accountName);
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
     String metricSetPairListId = UUID.randomUUID() + "";
 
     storageService.storeObject(
-        resolvedAccountName,
+            accountName,
         ObjectType.METRIC_SET_PAIR_LIST,
         metricSetPairListId,
         metricSetPairList);
@@ -69,18 +62,16 @@ public class MetricSetPairListService {
   }
 
   public void deleteMetricSetPairList(String accountName, String metricSetPairListId) {
-    String resolvedAccountName = getAccount(accountName);
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    StorageService storageService = accountCredentialsRepository.getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
 
     storageService.deleteObject(
-        resolvedAccountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+            accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
   }
 
   public List<Map<String, Object>> listAllMetricSetPairLists(String accountName) {
-    String resolvedAccountName = getAccount(accountName);
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    StorageService storageService = accountCredentialsRepository.getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
 
-    return storageService.listObjectKeys(resolvedAccountName, ObjectType.METRIC_SET_PAIR_LIST);
+    return storageService.listObjectKeys(accountName, ObjectType.METRIC_SET_PAIR_LIST);
   }
 
   private String getAccount(String accountName) {

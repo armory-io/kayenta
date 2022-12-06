@@ -17,32 +17,57 @@
 package com.netflix.kayenta.aws.security;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.aws.storage.S3StorageService;
 import com.netflix.kayenta.security.AccountCredentials;
-import java.util.List;
-import javax.validation.constraints.NotNull;
+import com.netflix.kayenta.storage.StorageService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
+import javax.validation.constraints.NotNull;
+import java.util.List;
+
 @Builder
 @Data
-public class AwsNamedAccountCredentials implements AccountCredentials<AwsCredentials> {
+public class AwsNamedAccountCredentials extends AccountCredentials {
 
-  @NotNull private String name;
+    @NotNull
+    private String name;
 
-  @NotNull @Singular private List<Type> supportedTypes;
+    @NotNull
+    @Singular
+    private List<Type> supportedTypes;
 
-  @NotNull private AwsCredentials credentials;
 
-  private String bucket;
-  private String region;
-  private String rootFolder;
+    private String bucket;
+    private String region;
+    private String rootFolder;
+    private String endpoint;
+    private String proxyHost;
+    private String proxyPort;
+    private String proxyProtocol;
 
-  @Override
-  public String getType() {
-    return "aws";
-  }
+    private String profileName;
+    private ExplicitAwsCredentials explicitCredentials;
+    private S3StorageService supportingService;
 
-  @JsonIgnore private AmazonS3 amazonS3;
+    @Data
+    public static class ExplicitAwsCredentials {
+
+        String accessKey;
+        String secretKey;
+        String sessionToken;
+    }
+
+    private AmazonS3 credentials;
+
+    @Override
+    public String getType() {
+        return "aws";
+    }
+
+    @Override
+    public S3StorageService getServiceForType(Type type) {
+        return supportingService;
+    }
 }

@@ -93,7 +93,7 @@ public class AzureConfiguration {
 
         AzureNamedAccountCredentials azureNamedAccountCredentials =
             azureNamedAccountCredentialsBuilder.build();
-        accountCredentialsRepository.save(name, azureNamedAccountCredentials);
+        accountCredentialsRepository.save(azureNamedAccountCredentials);
       } catch (Throwable t) {
         log.error("Could not load Azure account " + name + ".", t);
       }

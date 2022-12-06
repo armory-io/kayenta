@@ -54,7 +54,6 @@ public class ConfigBinStorageService implements StorageService {
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry a ConfigBin operation
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
 
-  @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired ObjectMapper kayentaObjectMapper;
 

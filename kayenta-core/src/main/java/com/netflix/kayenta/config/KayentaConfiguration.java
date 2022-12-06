@@ -16,29 +16,18 @@
 
 package com.netflix.kayenta.config;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.netflix.kayenta.atlas.config.KayentaSerializationConfigurationProperties;
 import com.netflix.kayenta.canary.CanaryMetricSetQueryConfig;
-import com.netflix.kayenta.metrics.MapBackedMetricsServiceRepository;
 import com.netflix.kayenta.metrics.MetricSetMixerService;
 import com.netflix.kayenta.metrics.MetricsRetryConfigurationProperties;
-import com.netflix.kayenta.metrics.MetricsServiceRepository;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.service.MetricSetPairListService;
-import com.netflix.kayenta.storage.MapBackedStorageServiceRepository;
-import com.netflix.kayenta.storage.StorageService;
-import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.kork.jackson.ObjectMapperSubtypeConfigurer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -48,6 +37,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+
+import java.util.List;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 
 @Configuration
 @Slf4j
@@ -67,13 +61,6 @@ public class KayentaConfiguration {
   @Bean
   @ConditionalOnMissingBean(AccountCredentialsRepository.class)
   AccountCredentialsRepository accountCredentialsRepository() {
-    return new MapBackedAccountCredentialsRepository();
-  }
-
-  @Bean
-  @ConditionalOnMissingBean(MetricsServiceRepository.class)
-  MetricsServiceRepository metricsServiceRepository() {
-    return new MapBackedMetricsServiceRepository();
   }
 
   @Bean
@@ -82,19 +69,13 @@ public class KayentaConfiguration {
     return new MetricSetMixerService();
   }
 
-  @Bean
-  @ConditionalOnMissingBean(StorageServiceRepository.class)
-  StorageServiceRepository storageServiceRepository(
-      @Autowired(required = false) Optional<List<StorageService>> storageServices) {
-    return new MapBackedStorageServiceRepository(storageServices.orElse(Collections.emptyList()));
-  }
+
 
   @Bean
   @ConditionalOnMissingBean
   MetricSetPairListService metricSetPairListService(
-      AccountCredentialsRepository accountCredentialsRepository,
-      StorageServiceRepository storageServiceRepository) {
-    return new MetricSetPairListService(accountCredentialsRepository, storageServiceRepository);
+      AccountCredentialsRepository accountCredentialsRepository) {
+    return new MetricSetPairListService(accountCredentialsRepository);
   }
 
   //

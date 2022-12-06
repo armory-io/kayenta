@@ -105,7 +105,7 @@ public class GoogleConfiguration {
 
         GoogleNamedAccountCredentials googleNamedAccountCredentials =
             googleNamedAccountCredentialsBuilder.build();
-        accountCredentialsRepository.save(name, googleNamedAccountCredentials);
+        accountCredentialsRepository.save(googleNamedAccountCredentials);
       } catch (Throwable t) {
         log.error("Could not load Google account " + name + ".", t);
       }

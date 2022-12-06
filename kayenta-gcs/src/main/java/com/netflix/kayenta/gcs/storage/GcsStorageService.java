@@ -31,6 +31,7 @@ import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.google.security.GoogleNamedAccountCredentials;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
@@ -53,16 +54,11 @@ public class GcsStorageService implements StorageService {
 
   @Autowired private ObjectMapper kayentaObjectMapper;
 
-  @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired private AccountCredentialsRepository accountCredentialsRepository;
 
   @Autowired private CanaryConfigIndex canaryConfigIndex;
 
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
 
   /** Check to see if the bucket exists, creating it if it is not there. */
   public void ensureBucketExists(String accountName) {

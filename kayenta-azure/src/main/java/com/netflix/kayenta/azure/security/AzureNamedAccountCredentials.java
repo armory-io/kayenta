@@ -27,7 +27,7 @@ import lombok.Singular;
 
 @Builder
 @Data
-public class AzureNamedAccountCredentials implements AccountCredentials<AzureCredentials> {
+public class AzureNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
 

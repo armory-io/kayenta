@@ -28,12 +28,11 @@ import lombok.Singular;
 
 @Builder
 @Data
-public class PrometheusNamedAccountCredentials
-    implements AccountCredentials<PrometheusCredentials> {
+public class PrometheusNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
 
-  @NotNull @Singular private List<Type> supportedTypes;
+  @NotNull @Singular private List<Type> supportedTypes = List.of(Type.METRICS_STORE);
 
   @NotNull private PrometheusCredentials credentials;
 

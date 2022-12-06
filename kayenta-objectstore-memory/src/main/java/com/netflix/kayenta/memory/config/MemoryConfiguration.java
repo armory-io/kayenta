@@ -77,17 +77,13 @@ public class MemoryConfiguration {
       Map<ObjectType, Map<String, Map<String, Object>>> metadataStorage = new ConcurrentHashMap<>();
       memoryNamedAccountCredentialsBuilder.metadata(metadataStorage);
 
-      MemoryNamedAccountCredentials memoryNamedAccountCredentials =
-          memoryNamedAccountCredentialsBuilder.build();
-      accountCredentialsRepository.save(name, memoryNamedAccountCredentials);
-      memoryStorageServiceBuilder.accountName(name);
+      MemoryNamedAccountCredentials memoryNamedAccountCredentials = memoryNamedAccountCredentialsBuilder.build();
+      accountCredentialsRepository.save(memoryNamedAccountCredentials);
     }
 
     MemoryStorageService memoryStorageService = memoryStorageServiceBuilder.build();
 
-    log.info(
-        "Populated MemoryStorageService with {} in-memory accounts.",
-        memoryStorageService.getAccountNames().size());
+    log.info( "Populated MemoryStorageService with {} in-memory accounts.", memoryConfigurationProperties.getAccounts().size());
 
     return memoryStorageService;
   }

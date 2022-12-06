@@ -52,7 +52,7 @@ import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class DatadogMetricsService implements MetricsService {
+public class DatadogMetricsService implements MetricsService<DatadogNamedAccountCredentials> {
   @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
@@ -68,13 +68,8 @@ public class DatadogMetricsService implements MetricsService {
   }
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  @Override
   public String buildQuery(
-      String metricsAccountName,
+          DatadogNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -96,14 +91,11 @@ public class DatadogMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+          DatadogNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
-    DatadogNamedAccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
-
     DatadogCredentials credentials = accountCredentials.getCredentials();
     DatadogRemoteService remoteService = accountCredentials.getDatadogRemoteService();
 
@@ -115,7 +107,7 @@ public class DatadogMetricsService implements MetricsService {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String query = buildQuery(accountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
     DatadogTimeSeries timeSeries =
         remoteService.getTimeSeries(
             credentials.getApiKey(),
@@ -159,7 +151,7 @@ public class DatadogMetricsService implements MetricsService {
   }
 
   @Override
-  public List<Map> getMetadata(String metricsAccountName, String filter) {
+  public List<Map> getMetadata(DatadogNamedAccountCredentials metricsAccountName, String filter) {
     if (!StringUtils.isEmpty(filter)) {
       String lowerCaseFilter = filter.toLowerCase();
 

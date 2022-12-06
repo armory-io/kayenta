@@ -29,7 +29,7 @@ import lombok.Singular;
 
 @Builder
 @Data
-public class AtlasNamedAccountCredentials implements AccountCredentials<AtlasCredentials> {
+public class AtlasNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
 

@@ -51,7 +51,6 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
   private final String currentInstanceId;
   private final JedisPool jedisPool;
   private final AccountCredentialsRepository accountCredentialsRepository;
-  private final StorageServiceRepository storageServiceRepository;
   private final ObjectMapper kayentaObjectMapper;
   private final CanaryConfigIndex canaryConfigIndex;
   private final IndexConfigurationProperties indexConfigurationProperties;
@@ -63,14 +62,12 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
       String currentInstanceId,
       JedisPool jedisPool,
       AccountCredentialsRepository accountCredentialsRepository,
-      StorageServiceRepository storageServiceRepository,
       ObjectMapper kayentaObjectMapper,
       CanaryConfigIndex canaryConfigIndex,
       IndexConfigurationProperties indexConfigurationProperties) {
     this.currentInstanceId = currentInstanceId;
     this.jedisPool = jedisPool;
     this.accountCredentialsRepository = accountCredentialsRepository;
-    this.storageServiceRepository = storageServiceRepository;
     this.kayentaObjectMapper = kayentaObjectMapper;
     this.canaryConfigIndex = canaryConfigIndex;
     this.indexConfigurationProperties = indexConfigurationProperties;

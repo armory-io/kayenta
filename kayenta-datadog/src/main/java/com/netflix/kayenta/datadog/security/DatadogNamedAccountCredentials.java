@@ -17,18 +17,20 @@
 package com.netflix.kayenta.datadog.security;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.datadog.metrics.DatadogMetricsService;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
-import java.util.List;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
+import javax.validation.constraints.NotNull;
+import java.util.List;
+
 @Builder
 @Data
-public class DatadogNamedAccountCredentials implements AccountCredentials<DatadogCredentials> {
+public class DatadogNamedAccountCredentials extends AccountCredentials {
   @NotNull private String name;
 
   @NotNull @Singular private List<Type> supportedTypes;
@@ -36,6 +38,7 @@ public class DatadogNamedAccountCredentials implements AccountCredentials<Datado
   @NotNull private DatadogCredentials credentials;
 
   @NotNull private RemoteService endpoint;
+  private DatadogMetricsService serviceType;
 
   @Override
   public String getType() {
@@ -43,4 +46,7 @@ public class DatadogNamedAccountCredentials implements AccountCredentials<Datado
   }
 
   @JsonIgnore DatadogRemoteService datadogRemoteService;
+  public DatadogMetricsService getServiceForType(Type type) {
+    return serviceType;
+  }
 }

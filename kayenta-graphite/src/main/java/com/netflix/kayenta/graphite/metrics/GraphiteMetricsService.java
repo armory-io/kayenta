@@ -49,7 +49,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @Builder
 @Slf4j
-public class GraphiteMetricsService implements MetricsService {
+public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccountCredentials> {
   private static final String DEFAULT_FORMAT = "json";
   private static final String DEFAULT_DESCRIPTOR_FORMAT = "completer";
   private static final String SCOPE_VARIABLE = "$scope";
@@ -72,14 +72,10 @@ public class GraphiteMetricsService implements MetricsService {
     return GraphiteCanaryMetricSetQueryConfig.SERVICE_TYPE;
   }
 
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
 
   @Override
   public String buildQuery(
-      String metricsAccountName,
+          GraphiteNamedAccountCredentials credentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -101,17 +97,15 @@ public class GraphiteMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String metricsAccountName,
+          GraphiteNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
-    GraphiteNamedAccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOne(metricsAccountName);
 
     GraphiteRemoteService remoteService = accountCredentials.getGraphiteRemoteService();
 
-    String query = buildQuery(metricsAccountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
     List<GraphiteResults> graphiteResultsList =
         remoteService.rangeQuery(
             query,
@@ -139,8 +133,8 @@ public class GraphiteMetricsService implements MetricsService {
 
   // TODO: in case of performance issue when there are lots of users, we could cache last responses
   @Override
-  public List<Map> getMetadata(String metricsAccountName, String filter) throws IOException {
-    log.debug(String.format("Getting metadata for %s with filter %s", metricsAccountName, filter));
+  public List<Map> getMetadata(GraphiteNamedAccountCredentials accountCredentials, String filter) throws IOException {
+    log.debug(String.format("Getting metadata for %s with filter %s", accountCredentials.getName(), filter));
 
     String baseFilter = "";
     if (filter.contains(DELIMITER)) {
@@ -155,8 +149,6 @@ public class GraphiteMetricsService implements MetricsService {
     if (needSpecialDescriptors) {
       result.addAll(getSpecialMetricDescriptors(baseFilter));
     } else {
-      GraphiteNamedAccountCredentials accountCredentials =
-          accountCredentialsRepository.getRequiredOne(metricsAccountName);
 
       GraphiteRemoteService remoteService = accountCredentials.getGraphiteRemoteService();
 
@@ -168,7 +160,7 @@ public class GraphiteMetricsService implements MetricsService {
       log.debug(
           String.format(
               "Getting response for %s with response size %d",
-              metricsAccountName, graphiteMetricDescriptorsResponse.getMetrics().size()));
+                  accountCredentials.getName(), graphiteMetricDescriptorsResponse.getMetrics().size()));
 
       String finalBaseFilter = baseFilter;
       Set<String> resultSet =

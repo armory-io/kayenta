@@ -37,18 +37,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @Builder
 public class MemoryStorageService implements StorageService {
-  @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired AccountCredentialsRepository accountCredentialsRepository;
 
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
 
   private MemoryNamedAccountCredentials getCredentials(String accountName, ObjectType objectType) {
-    MemoryNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+    MemoryNamedAccountCredentials credentials = accountCredentialsRepository.findById(accountName).orElseThrow().getCredentials();
     credentials.getObjects().putIfAbsent(objectType, new ConcurrentHashMap<>());
     credentials.getMetadata().putIfAbsent(objectType, new ConcurrentHashMap<>());
     return credentials;

@@ -43,14 +43,12 @@ import lombok.Getter;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Builder
 @Slf4j
-public class NewRelicMetricsService implements MetricsService {
-
-  @NotNull @Singular @Getter private List<String> accountNames;
-
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
+@Component
+public class NewRelicMetricsService implements MetricsService<NewRelicNamedAccountCredentials>{
 
   @Autowired private final Map<String, NewRelicScopeConfiguration> newrelicScopeConfigurationMap;
 
@@ -64,19 +62,14 @@ public class NewRelicMetricsService implements MetricsService {
   }
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  @Override
   public String buildQuery(
-      String metricsAccountName,
+          NewRelicNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
 
     NewRelicScopeConfiguration scopeConfiguration =
-        newrelicScopeConfigurationMap.get(metricsAccountName);
+        newrelicScopeConfigurationMap.get(accountCredentials.getName());
 
     NewRelicCanaryScope newRelicCanaryScope = (NewRelicCanaryScope) canaryScope;
 
@@ -89,18 +82,16 @@ public class NewRelicMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+          NewRelicNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
-    NewRelicNamedAccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
 
     NewRelicCredentials credentials = accountCredentials.getCredentials();
     NewRelicRemoteService remoteService = accountCredentials.getNewRelicRemoteService();
 
-    String query = buildQuery(accountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     NewRelicTimeSeries timeSeries =
         remoteService.getTimeSeries(

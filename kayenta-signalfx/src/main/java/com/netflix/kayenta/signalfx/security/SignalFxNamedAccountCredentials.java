@@ -18,18 +18,22 @@
 package com.netflix.kayenta.signalfx.security;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
+import com.netflix.kayenta.signalfx.metrics.SignalFxMetricsService;
 import com.netflix.kayenta.signalfx.service.SignalFxSignalFlowRemoteService;
 import java.util.List;
 import javax.validation.constraints.NotNull;
+
+import com.netflix.kayenta.storage.StorageService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
 @Builder
 @Data
-public class SignalFxNamedAccountCredentials implements AccountCredentials<SignalFxCredentials> {
+public class SignalFxNamedAccountCredentials extends AccountCredentials<SignalFxNamedAccountCredentials> {
 
   @NotNull private String name;
 
@@ -38,10 +42,21 @@ public class SignalFxNamedAccountCredentials implements AccountCredentials<Signa
   @NotNull private SignalFxCredentials credentials;
 
   @NotNull private RemoteService endpoint;
+  private MetricsService<SignalFxNamedAccountCredentials> metricsService;
 
   @Override
   public String getType() {
     return "signalfx";
+  }
+
+  @Override
+  public MetricsService<SignalFxNamedAccountCredentials> getMetricsService() {
+    return metricsService;
+  }
+
+  @Override
+  public StorageService<SignalFxNamedAccountCredentials> getStorageService() {
+    return null;
   }
 
   @JsonIgnore SignalFxSignalFlowRemoteService signalFlowService;

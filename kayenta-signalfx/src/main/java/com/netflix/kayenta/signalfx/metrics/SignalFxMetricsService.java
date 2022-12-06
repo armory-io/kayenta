@@ -54,7 +54,7 @@ import retrofit.RetrofitError;
 
 @Builder
 @Slf4j
-public class SignalFxMetricsService implements MetricsService {
+public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccountCredentials>{
 
   private static final String SIGNAL_FLOW_ERROR_TEMPLATE =
       "An error occurred while executing the Signal Flow program. "
@@ -80,19 +80,14 @@ public class SignalFxMetricsService implements MetricsService {
   }
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  @Override
   public String buildQuery(
-      String metricsAccountName,
+          SignalFxNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
 
     SignalFxScopeConfiguration scopeConfiguration =
-        signalFxScopeConfigurationMap.get(metricsAccountName);
+        signalFxScopeConfigurationMap.get(accountCredentials.getName());
     SignalFxCanaryScope signalFxCanaryScope = (SignalFxCanaryScope) canaryScope;
     SignalFxCanaryMetricSetQueryConfig queryConfig =
         (SignalFxCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
@@ -103,7 +98,7 @@ public class SignalFxMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String metricsAccountName,
+          SignalFxNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -122,9 +117,6 @@ public class SignalFxMetricsService implements MetricsService {
     List<QueryPair> queryPairs =
         Optional.ofNullable(queryConfig.getQueryPairs()).orElse(new LinkedList<>());
 
-    SignalFxNamedAccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOne(metricsAccountName);
-
     String accessToken = accountCredentials.getCredentials().getAccessToken();
     SignalFxSignalFlowRemoteService signalFlowService = accountCredentials.getSignalFlowService();
 
@@ -136,7 +128,7 @@ public class SignalFxMetricsService implements MetricsService {
     // Determine and validate the data resolution to use for the query
     long stepMilli = Duration.ofSeconds(canaryStepLengthInSeconds).toMillis();
 
-    String program = buildQuery(metricsAccountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String program = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     SignalFlowExecutionResult signalFlowExecutionResult;
 
@@ -147,12 +139,12 @@ public class SignalFxMetricsService implements MetricsService {
     } catch (RetrofitError e) {
       ErrorResponse errorResponse = (ErrorResponse) e.getBodyAs(ErrorResponse.class);
       throw new SignalFxRequestError(
-          errorResponse, program, startEpochMilli, endEpochMilli, stepMilli, metricsAccountName);
+          errorResponse, program, startEpochMilli, endEpochMilli, stepMilli, accountCredentials.getName());
     }
 
     validateResults(
         signalFlowExecutionResult.getChannelMessages(),
-        metricsAccountName,
+            accountCredentials.getName(),
         startEpochMilli,
         endEpochMilli,
         stepMilli,
@@ -189,7 +181,7 @@ public class SignalFxMetricsService implements MetricsService {
             .attribute("requested-step-milli", String.valueOf(stepMilli))
             .attribute("requested-max-delay", String.valueOf(maxDelay))
             .attribute("requested-immediate", String.valueOf(immediate))
-            .attribute("requested-account", metricsAccountName);
+            .attribute("requested-account", accountCredentials.getName());
 
     Optional.ofNullable(firstDataPoint)
         .ifPresent(

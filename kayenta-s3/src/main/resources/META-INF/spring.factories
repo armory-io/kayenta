@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.netflix.kayenta.s3.config.S3Configuration
+com.netflix.kayenta.aws.config.S3Configuration

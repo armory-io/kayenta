@@ -25,6 +25,7 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.prometheus.canary.PrometheusCanaryScope;
 import com.netflix.kayenta.prometheus.model.PrometheusResults;
+import com.netflix.kayenta.prometheus.security.PrometheusCredentials;
 import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
@@ -240,8 +241,7 @@ public class PrometheusMetricsService implements MetricsService {
               + "neglecting to explicitly specify which account to use for a given request.");
     }
 
-    PrometheusNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+    PrometheusNamedAccountCredentials credentials = accountCredentialsRepository.findById(accountName).get().getCredentials();
     PrometheusRemoteService prometheusRemoteService = credentials.getPrometheusRemoteService();
 
     if (StringUtils.isEmpty(canaryScope.getStart())) {
