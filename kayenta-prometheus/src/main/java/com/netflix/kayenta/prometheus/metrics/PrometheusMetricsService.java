@@ -24,25 +24,18 @@ import com.netflix.kayenta.canary.providers.metrics.QueryConfigUtils;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.prometheus.canary.PrometheusCanaryScope;
+import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
 import com.netflix.kayenta.prometheus.model.PrometheusResults;
-import com.netflix.kayenta.prometheus.security.PrometheusCredentials;
-import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spectator.api.Id;
 import com.netflix.spectator.api.Registry;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -50,11 +43,9 @@ import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class PrometheusMetricsService implements MetricsService {
+public class PrometheusMetricsService implements MetricsService<PrometheusManagedAccount> {
 
   @NotNull private String scopeLabel;
-
-  @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -65,11 +56,6 @@ public class PrometheusMetricsService implements MetricsService {
   @Override
   public String getType() {
     return "prometheus";
-  }
-
-  @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
   }
 
   private StringBuilder addScopeFilter(
@@ -183,7 +169,7 @@ public class PrometheusMetricsService implements MetricsService {
 
   @Override
   public String buildQuery(
-      String metricsAccountName,
+      PrometheusManagedAccount metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -228,7 +214,7 @@ public class PrometheusMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+      PrometheusManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
@@ -241,8 +227,8 @@ public class PrometheusMetricsService implements MetricsService {
               + "neglecting to explicitly specify which account to use for a given request.");
     }
 
-    PrometheusNamedAccountCredentials credentials = accountCredentialsRepository.findById(accountName).get().getCredentials();
-    PrometheusRemoteService prometheusRemoteService = credentials.getPrometheusRemoteService();
+    PrometheusRemoteService prometheusRemoteService =
+        accountCredentials.getPrometheusRemoteService();
 
     if (StringUtils.isEmpty(canaryScope.getStart())) {
       throw new IllegalArgumentException("Start time is required.");
@@ -252,8 +238,7 @@ public class PrometheusMetricsService implements MetricsService {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String query =
-        buildQuery(accountName, canaryConfig, canaryMetricConfig, canaryScope).toString();
+    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     long startTime = registry.clock().monotonicTime();
     List<PrometheusResults> prometheusResultsList;
@@ -318,10 +303,5 @@ public class PrometheusMetricsService implements MetricsService {
     }
 
     return metricSetList;
-  }
-
-  @Override
-  public List<Map> getMetadata(String metricsAccountName, String filter) {
-    return metricDescriptorsCache.getMetadata(metricsAccountName, filter);
   }
 }

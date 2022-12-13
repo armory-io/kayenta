@@ -193,7 +193,7 @@ public class PrometheusMetricDescriptorsCacheTest {
     verify(accountCredentialRepo).getAllOf(AccountCredentials.Type.METRICS_STORE);
   }
 
-  public static class TestAccountCredentials implements AccountCredentials<String> {
+  public static class TestAccountCredentials extends AccountCredentials {
 
     @Override
     public String getName() {

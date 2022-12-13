@@ -16,22 +16,30 @@
 
 package com.netflix.kayenta.newrelic.config;
 
-import com.netflix.kayenta.retrofit.config.RemoteService;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.newrelic.service.NewRelicRemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 
 @Data
-public class NewRelicManagedAccount {
+public class NewRelicManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
   private String apiKey;
   private String applicationKey;
 
-  @NotNull private RemoteService endpoint;
+  @NotNull private String baseUrl;
+
+  public String getBaseUrl() {
+    return StringUtils.defaultIfEmpty(baseUrl, "https://insights-api.newrelic.com");
+  }
 
   @Nullable private String defaultScopeKey;
 
@@ -39,4 +47,11 @@ public class NewRelicManagedAccount {
 
   private List<AccountCredentials.Type> supportedTypes =
       Collections.singletonList(AccountCredentials.Type.METRICS_STORE);
+
+  @JsonIgnore @Getter @Setter transient NewRelicRemoteService newRelicRemoteService;
+
+  @Override
+  public String getType() {
+    return "newrelic";
+  }
 }

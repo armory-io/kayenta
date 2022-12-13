@@ -21,19 +21,18 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.signalfx.metrics.SignalFxMetricsService;
 import com.netflix.kayenta.signalfx.service.SignalFxSignalFlowRemoteService;
+import com.netflix.kayenta.storage.StorageService;
 import java.util.List;
 import javax.validation.constraints.NotNull;
-
-import com.netflix.kayenta.storage.StorageService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
 @Builder
 @Data
-public class SignalFxNamedAccountCredentials extends AccountCredentials<SignalFxNamedAccountCredentials> {
+public class SignalFxNamedAccountCredentials
+    extends AccountCredentials<SignalFxNamedAccountCredentials> {
 
   @NotNull private String name;
 

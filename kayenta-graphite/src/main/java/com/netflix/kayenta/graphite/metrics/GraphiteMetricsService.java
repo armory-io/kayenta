@@ -21,35 +21,24 @@ import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.GraphiteCanaryMetricSetQueryConfig;
+import com.netflix.kayenta.graphite.config.GraphiteManagedAccount;
 import com.netflix.kayenta.graphite.model.GraphiteMetricDescriptor;
 import com.netflix.kayenta.graphite.model.GraphiteMetricDescriptorsResponse;
 import com.netflix.kayenta.graphite.model.GraphiteResults;
-import com.netflix.kayenta.graphite.security.GraphiteNamedAccountCredentials;
 import com.netflix.kayenta.graphite.service.GraphiteRemoteService;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.spectator.api.Registry;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Builder
 @Slf4j
-public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccountCredentials> {
+public class GraphiteMetricsService implements MetricsService<GraphiteManagedAccount> {
   private static final String DEFAULT_FORMAT = "json";
   private static final String DEFAULT_DESCRIPTOR_FORMAT = "completer";
   private static final String SCOPE_VARIABLE = "$scope";
@@ -58,24 +47,20 @@ public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccou
   private static final String GRAPHITE_QUERY_WILDCARD = "*";
   private static final String GRAPHITE_IS_LEAF = "1";
 
-  @NotNull @Singular @Getter private List<String> accountNames;
+  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository = null;
-
-  @Autowired private final Registry registry = null;
-
-  @Builder.Default
-  private List<GraphiteMetricDescriptor> metricDescriptorsCache = Collections.emptyList();
+  public GraphiteMetricsService(AccountCredentialsRepository accountCredentialsRepository) {
+    this.accountCredentialsRepository = accountCredentialsRepository;
+  }
 
   @Override
   public String getType() {
     return GraphiteCanaryMetricSetQueryConfig.SERVICE_TYPE;
   }
 
-
   @Override
   public String buildQuery(
-          GraphiteNamedAccountCredentials credentials,
+      GraphiteManagedAccount credentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -97,7 +82,7 @@ public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccou
 
   @Override
   public List<MetricSet> queryMetrics(
-          GraphiteNamedAccountCredentials accountCredentials,
+      GraphiteManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
@@ -133,8 +118,11 @@ public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccou
 
   // TODO: in case of performance issue when there are lots of users, we could cache last responses
   @Override
-  public List<Map> getMetadata(GraphiteNamedAccountCredentials accountCredentials, String filter) throws IOException {
-    log.debug(String.format("Getting metadata for %s with filter %s", accountCredentials.getName(), filter));
+  public List<Map> getMetadata(GraphiteManagedAccount accountCredentials, String filter)
+      throws IOException {
+    log.debug(
+        String.format(
+            "Getting metadata for %s with filter %s", accountCredentials.getName(), filter));
 
     String baseFilter = "";
     if (filter.contains(DELIMITER)) {
@@ -160,7 +148,7 @@ public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccou
       log.debug(
           String.format(
               "Getting response for %s with response size %d",
-                  accountCredentials.getName(), graphiteMetricDescriptorsResponse.getMetrics().size()));
+              accountCredentials.getName(), graphiteMetricDescriptorsResponse.getMetrics().size()));
 
       String finalBaseFilter = baseFilter;
       Set<String> resultSet =
@@ -179,6 +167,12 @@ public class GraphiteMetricsService implements MetricsService<GraphiteNamedAccou
     }
 
     return result;
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof GraphiteManagedAccount
+        && account.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE);
   }
 
   private List<Map> getSpecialMetricDescriptors(String baseFilter) {

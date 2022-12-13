@@ -21,8 +21,7 @@ import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.DatadogCanaryMetricSetQueryConfig;
 import com.netflix.kayenta.canary.providers.metrics.QueryConfigUtils;
-import com.netflix.kayenta.datadog.security.DatadogCredentials;
-import com.netflix.kayenta.datadog.security.DatadogNamedAccountCredentials;
+import com.netflix.kayenta.datadog.config.DatadogManagedAccount;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
 import com.netflix.kayenta.datadog.service.DatadogTimeSeries;
 import com.netflix.kayenta.metrics.MetricSet;
@@ -31,35 +30,23 @@ import com.netflix.kayenta.model.DatadogMetricDescriptor;
 import com.netflix.kayenta.model.DatadogMetricDescriptorsResponse;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.spectator.api.Registry;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-@Builder
 @Slf4j
-public class DatadogMetricsService implements MetricsService<DatadogNamedAccountCredentials> {
-  @NotNull @Singular @Getter private List<String> accountNames;
+@RequiredArgsConstructor
+public class DatadogMetricsService implements MetricsService<DatadogManagedAccount> {
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
-  @Autowired private final Registry registry;
-
-  @Builder.Default
   private List<DatadogMetricDescriptor> metricDescriptorsCache = Collections.emptyList();
 
   @Override
@@ -69,7 +56,7 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
 
   @Override
   public String buildQuery(
-          DatadogNamedAccountCredentials accountCredentials,
+      DatadogManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -91,12 +78,11 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
 
   @Override
   public List<MetricSet> queryMetrics(
-          DatadogNamedAccountCredentials accountCredentials,
+      DatadogManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
-    DatadogCredentials credentials = accountCredentials.getCredentials();
     DatadogRemoteService remoteService = accountCredentials.getDatadogRemoteService();
 
     if (StringUtils.isEmpty(canaryScope.getStart())) {
@@ -110,8 +96,8 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
     String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
     DatadogTimeSeries timeSeries =
         remoteService.getTimeSeries(
-            credentials.getApiKey(),
-            credentials.getApplicationKey(),
+            accountCredentials.getApiKey(),
+            accountCredentials.getApplicationKey(),
             (int) canaryScope.getStart().getEpochSecond(),
             (int) canaryScope.getEnd().getEpochSecond(),
             query);
@@ -151,7 +137,7 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
   }
 
   @Override
-  public List<Map> getMetadata(DatadogNamedAccountCredentials metricsAccountName, String filter) {
+  public List<Map> getMetadata(DatadogManagedAccount metricsAccountName, String filter) {
     if (!StringUtils.isEmpty(filter)) {
       String lowerCaseFilter = filter.toLowerCase();
 
@@ -174,16 +160,14 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
         accountCredentialsRepository.getAllOf(AccountCredentials.Type.METRICS_STORE);
 
     for (AccountCredentials credentials : accountCredentialsSet) {
-      if (credentials instanceof DatadogNamedAccountCredentials) {
-        DatadogNamedAccountCredentials datadogCredentials =
-            (DatadogNamedAccountCredentials) credentials;
+      if (credentials instanceof DatadogManagedAccount) {
+        DatadogManagedAccount datadogCredentials = (DatadogManagedAccount) credentials;
         DatadogRemoteService datadogRemoteService = datadogCredentials.getDatadogRemoteService();
-        DatadogCredentials ddCredentials = datadogCredentials.getCredentials();
         // Retrieve all metrics actively reporting in the last hour.
         long from = Instant.now().getEpochSecond() - 60 * 60;
         DatadogMetricDescriptorsResponse datadogMetricDescriptorsResponse =
             datadogRemoteService.getMetrics(
-                ddCredentials.getApiKey(), ddCredentials.getApplicationKey(), from);
+                datadogCredentials.getApiKey(), datadogCredentials.getApplicationKey(), from);
 
         if (datadogMetricDescriptorsResponse != null) {
           List<String> metrics = datadogMetricDescriptorsResponse.getMetrics();
@@ -212,5 +196,10 @@ public class DatadogMetricsService implements MetricsService<DatadogNamedAccount
         }
       }
     }
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof DatadogManagedAccount;
   }
 }

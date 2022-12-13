@@ -29,10 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Builder
@@ -40,9 +37,9 @@ public class MemoryStorageService implements StorageService {
 
   @Autowired AccountCredentialsRepository accountCredentialsRepository;
 
-
   private MemoryNamedAccountCredentials getCredentials(String accountName, ObjectType objectType) {
-    MemoryNamedAccountCredentials credentials = accountCredentialsRepository.findById(accountName).orElseThrow().getCredentials();
+    MemoryNamedAccountCredentials credentials =
+        accountCredentialsRepository.findById(accountName).orElseThrow().getCredentials();
     credentials.getObjects().putIfAbsent(objectType, new ConcurrentHashMap<>());
     credentials.getMetadata().putIfAbsent(objectType, new ConcurrentHashMap<>());
     return credentials;

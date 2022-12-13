@@ -1,7 +1,7 @@
 /*
- * Copyright 2018 Joseph Motha
+ * Copyright 2022 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License")
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,18 +14,12 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.influxdb.security;
+package com.netflix.kayenta.datadog.config;
 
-import java.util.Optional;
-import lombok.Builder;
-import lombok.Data;
+import com.netflix.kayenta.retrofit.config.RemoteService;
 
-@Builder
-@Data
-public class InfluxdbCredentials {
-  private static String applicationVersion =
-      Optional.ofNullable(InfluxdbCredentials.class.getPackage().getImplementationVersion())
-          .orElse("Unknown");
+public interface RemoteServiceWrapper {
+  void setEndpoint(RemoteService endpoint);
 
-  private String dbName;
+  void setBaseUrl(String baseUrl);
 }

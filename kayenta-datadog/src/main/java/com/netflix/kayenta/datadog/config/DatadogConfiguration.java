@@ -18,11 +18,8 @@ package com.netflix.kayenta.datadog.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.datadog.metrics.DatadogMetricsService;
-import com.netflix.kayenta.datadog.security.DatadogCredentials;
-import com.netflix.kayenta.datadog.security.DatadogNamedAccountCredentials;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
 import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
@@ -65,50 +62,27 @@ public class DatadogConfiguration {
       OkHttpClient okHttpClient,
       AccountCredentialsRepository accountCredentialsRepository)
       throws IOException {
-    DatadogMetricsService.DatadogMetricsServiceBuilder metricsServiceBuilder =
-        DatadogMetricsService.builder();
 
     for (DatadogManagedAccount account : datadogConfigurationProperties.getAccounts()) {
-      String name = account.getName();
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
-
-      DatadogCredentials credentials =
-          DatadogCredentials.builder()
-              .apiKey(account.getApiKey())
-              .applicationKey(account.getApplicationKey())
-              .build();
-
-      DatadogNamedAccountCredentials.DatadogNamedAccountCredentialsBuilder
-          accountCredentialsBuilder =
-              DatadogNamedAccountCredentials.builder()
-                  .name(name)
-                  .endpoint(account.getEndpoint())
-                  .credentials(credentials);
-
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          accountCredentialsBuilder.datadogRemoteService(
-              createDatadogRemoteService(
-                  retrofitClientFactory, objectMapper, account.getEndpoint(), okHttpClient));
-        }
-        accountCredentialsBuilder.supportedTypes(supportedTypes);
+      if (!CollectionUtils.isEmpty(supportedTypes)
+          && supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
+        // NOT sure if I like this pattern where the remote service is there... wondering if that
+        // shouldn't be something the metrics service determines... but it IS account specific
+        account.setDatadogRemoteService(
+            createDatadogRemoteService(
+                retrofitClientFactory, objectMapper, account.getBaseUrl(), okHttpClient));
       }
-
-      accountCredentialsRepository.save(name, accountCredentialsBuilder.build());
-      metricsServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(account);
     }
-
-    log.info(
-        "Populated DatadogMetricsService with {} Datadog accounts.",
-        datadogConfigurationProperties.getAccounts().size());
-    return metricsServiceBuilder.build();
+    return new DatadogMetricsService(accountCredentialsRepository);
   }
 
   @VisibleForTesting
   public static DatadogRemoteService createDatadogRemoteService(
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
-      RemoteService endpoint,
+      String endpoint,
       OkHttpClient okHttpClient) {
 
     return retrofitClientFactory.createClient(

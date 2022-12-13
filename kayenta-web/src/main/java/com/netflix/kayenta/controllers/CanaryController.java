@@ -159,22 +159,23 @@ public class CanaryController {
   public CanaryExecutionStatusResponse getCanaryResults(
       @RequestParam(required = false) final String storageAccountName,
       @PathVariable String canaryExecutionId) {
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getRequiredOneBy(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     // First look in the online cache.  If nothing is found there, look in our storage for the ID.
     try {
-      PipelineExecution pipeline =
-          executionRepository.retrieve(ExecutionType.PIPELINE, canaryExecutionId);
-      return executionMapper.fromExecution(pipeline);
+      return executionMapper.fromExecution(
+          executionRepository.retrieve(ExecutionType.PIPELINE, canaryExecutionId));
     } catch (ExecutionNotFoundException e) {
       StorageService storageService =
           storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
 
       return storageService.loadObject(
-          resolvedStorageAccountName, ObjectType.CANARY_RESULT_ARCHIVE, canaryExecutionId);
+          storageAccount,
+          ObjectType.CANARY_RESULT_ARCHIVE.getTypeClass(),
+          ObjectType.CANARY_RESULT_ARCHIVE,
+          canaryExecutionId);
     }
   }
 

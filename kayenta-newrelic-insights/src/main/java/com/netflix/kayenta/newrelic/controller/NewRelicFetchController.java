@@ -98,14 +98,11 @@ public class NewRelicFetchController {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     NewRelicCanaryScope canaryScope = new NewRelicCanaryScope();
     canaryScope.setScope(scope);
@@ -124,8 +121,8 @@ public class NewRelicFetchController {
     canaryScope.setExtendedScopeParams(newRelicFetchRequest.extendedScopeParams);
 
     return synchronousQueryProcessor.processQueryAndReturnMap(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        metricsAccount,
+        storageAccount,
         newRelicFetchRequest.getCanaryConfig(),
         newRelicFetchRequest.getCanaryMetricConfig(),
         Optional.ofNullable(metricIndex).orElse(0),

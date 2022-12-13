@@ -49,6 +49,7 @@ int getOpenPort(String service) {
     }
 }
 
+//TODO: Change this over to use TestContainers system instead of requiring redis CLI
 //noinspection GroovyAssignabilityCheck
 task startEmbeddedRedis() {
     group 'Application'
@@ -56,7 +57,7 @@ task startEmbeddedRedis() {
 
     doLast {
         def redisPort = getOpenPort("Redis")
-        String redisBinPath = getRequiredSystemProp('redis.path')
+        String redisBinPath = getRequiredSystemProp('redis.path', "Path to the redis binary CLI")
         File redisBin = new File(redisBinPath)
         if (!redisBin.exists()) {
             //noinspection GroovyAssignabilityCheck
@@ -120,7 +121,7 @@ task stopGraphite() {
 }
 
 @SuppressWarnings("GrMethodMayBeStatic")
-String getRequiredSystemProp(String key) {
+String getRequiredSystemProp(String key, String description) {
     String value = System.getProperty(key)
     if (value == null || value == "") {
         throw new IllegalStateException("The system property ${key} was not supplied to the gradle script via a -D param".toString())
@@ -144,8 +145,7 @@ task integrationTest(type: Test) {
         systemProperty("redis.port", startEmbeddedRedis.ext.redisPort)
         systemProperty("graphite.queryPort", startGraphite.ext.graphiteQueryPort)
         systemProperty("graphite.feedPort", startGraphite.ext.graphiteFeedPort)
-        systemProperty("canary.config",
-                getRequiredSystemPropWithDefault("canary.config", "integration-test-canary-config.json"))
+        systemProperty("canary.config", getRequiredSystemPropWithDefault("canary.config", "integration-test-canary-config.json"))
         systemProperty("canary.marginal", getRequiredSystemPropWithDefault("canary.marginal", "50"))
         systemProperty("canary.pass", getRequiredSystemPropWithDefault("canary.pass", "75"))
     }

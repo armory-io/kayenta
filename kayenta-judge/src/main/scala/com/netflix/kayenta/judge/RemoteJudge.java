@@ -25,7 +25,6 @@ import com.netflix.kayenta.judge.config.RemoteJudgeConfigurationProperties;
 import com.netflix.kayenta.judge.model.RemoteJudgeRequest;
 import com.netflix.kayenta.judge.service.RemoteJudgeService;
 import com.netflix.kayenta.metrics.MetricSetPair;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.squareup.okhttp.OkHttpClient;
 import java.util.List;
@@ -42,7 +41,7 @@ public class RemoteJudge extends CanaryJudge {
 
   private final RetrofitClientFactory retrofitClientFactory;
   private final ObjectMapper kayentaObjectMapper;
-  private final RemoteService endpoint;
+  private final String baseUrl;
 
   private final String JUDGE_NAME = "RemoteJudge-v1.0";
 
@@ -52,9 +51,9 @@ public class RemoteJudge extends CanaryJudge {
       RemoteJudgeConfigurationProperties config) {
     this.retrofitClientFactory = retrofitClientFactory;
     this.kayentaObjectMapper = kayentaObjectMapper;
-    this.endpoint = config.getEndpoint();
+    this.baseUrl = config.getBaseUrl();
 
-    log.info("Configured " + JUDGE_NAME + " with base URI " + endpoint.getBaseUrl());
+    log.info("Configured " + JUDGE_NAME + " with base URI " + baseUrl);
   }
 
   @Override
@@ -81,7 +80,7 @@ public class RemoteJudge extends CanaryJudge {
         retrofitClientFactory.createClient(
             RemoteJudgeService.class,
             new JacksonConverter(kayentaObjectMapper),
-            endpoint,
+            baseUrl,
             okHttpClient);
 
     RemoteJudgeRequest judgeRequest =

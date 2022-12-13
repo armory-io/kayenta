@@ -16,17 +16,15 @@
 
 package com.netflix.kayenta.influxdb.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.influxdb.metrics.InfluxDbMetricsService;
-import com.netflix.kayenta.influxdb.security.InfluxDbNamedAccountCredentials;
-import com.netflix.kayenta.influxdb.security.InfluxdbCredentials;
+import com.netflix.kayenta.influxdb.metrics.InfluxDbQueryBuilder;
 import com.netflix.kayenta.influxdb.service.InfluxDbRemoteService;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
+import com.netflix.spectator.api.Registry;
 import com.squareup.okhttp.OkHttpClient;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -59,45 +57,31 @@ public class InfluxDbConfiguration {
       InfluxDbResponseConverter influxDbResponseConverter,
       InfluxDbConfigurationProperties influxDbConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
-      ObjectMapper objectMapper,
       OkHttpClient okHttpClient,
-      AccountCredentialsRepository accountCredentialsRepository)
-      throws IOException {
-    InfluxDbMetricsService.InfluxDbMetricsServiceBuilder metricsServiceBuilder =
-        InfluxDbMetricsService.builder();
+      AccountCredentialsRepository accountCredentialsRepository,
+      Registry registry,
+      InfluxDbQueryBuilder queryBuilder) {
 
     for (InfluxDbManagedAccount account : influxDbConfigurationProperties.getAccounts()) {
-      String name = account.getName();
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
-
-      InfluxdbCredentials credentials = InfluxdbCredentials.builder().build();
-
-      InfluxDbNamedAccountCredentials.InfluxDbNamedAccountCredentialsBuilder
-          accountCredentialsBuilder =
-              InfluxDbNamedAccountCredentials.builder()
-                  .name(name)
-                  .endpoint(account.getEndpoint())
-                  .credentials(credentials);
 
       if (!CollectionUtils.isEmpty(supportedTypes)) {
         if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          accountCredentialsBuilder.influxDbRemoteService(
+          account.setInfluxDbRemoteService(
               retrofitClientFactory.createClient(
                   InfluxDbRemoteService.class,
                   influxDbResponseConverter,
-                  account.getEndpoint(),
+                  account.getBaseUrl(),
                   okHttpClient));
         }
-        accountCredentialsBuilder.supportedTypes(supportedTypes);
       }
 
-      accountCredentialsRepository.save(name, accountCredentialsBuilder.build());
-      metricsServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(account);
     }
 
     log.info(
         "Populated influxDbMetricsService with {} influxdb accounts.",
         influxDbConfigurationProperties.getAccounts().size());
-    return metricsServiceBuilder.build();
+    return new InfluxDbMetricsService(accountCredentialsRepository, registry, queryBuilder);
   }
 }

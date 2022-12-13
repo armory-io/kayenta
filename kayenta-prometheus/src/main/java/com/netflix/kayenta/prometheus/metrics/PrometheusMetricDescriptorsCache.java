@@ -16,9 +16,9 @@
 
 package com.netflix.kayenta.prometheus.metrics;
 
+import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
 import com.netflix.kayenta.prometheus.model.PrometheusMetricDescriptor;
 import com.netflix.kayenta.prometheus.model.PrometheusMetricDescriptorsResponse;
-import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
@@ -29,11 +29,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 @Slf4j
+@Component
 public class PrometheusMetricDescriptorsCache {
 
   private volatile Map<String, List<PrometheusMetricDescriptor>> cache = Collections.emptyMap();
@@ -41,7 +44,7 @@ public class PrometheusMetricDescriptorsCache {
   private final AccountCredentialsRepository accountCredentialsRepository;
 
   public PrometheusMetricDescriptorsCache(
-      AccountCredentialsRepository accountCredentialsRepository) {
+      @Autowired AccountCredentialsRepository accountCredentialsRepository) {
     this.accountCredentialsRepository = accountCredentialsRepository;
   }
 
@@ -76,8 +79,8 @@ public class PrometheusMetricDescriptorsCache {
 
     Map<String, List<PrometheusMetricDescriptor>> updatedCache =
         accountCredentialsSet.stream()
-            .filter(credentials -> credentials instanceof PrometheusNamedAccountCredentials)
-            .map(credentials -> (PrometheusNamedAccountCredentials) credentials)
+            .filter(credentials -> credentials instanceof PrometheusManagedAccount)
+            .map(credentials -> (PrometheusManagedAccount) credentials)
             .map(this::listMetricDescriptors)
             .filter(this::isSuccessful)
             .filter(this::hasData)
@@ -101,7 +104,7 @@ public class PrometheusMetricDescriptorsCache {
     return descriptors;
   }
 
-  private AccountResponse listMetricDescriptors(PrometheusNamedAccountCredentials credentials) {
+  private AccountResponse listMetricDescriptors(PrometheusManagedAccount credentials) {
     PrometheusRemoteService prometheusRemoteService = credentials.getPrometheusRemoteService();
     PrometheusMetricDescriptorsResponse remoteResponse =
         prometheusRemoteService.listMetricDescriptors();

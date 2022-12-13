@@ -17,11 +17,12 @@
 package com.netflix.kayenta.index
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.netflix.kayenta.MockAccountCredentials
 import com.netflix.kayenta.canary.CanaryConfig
 import com.netflix.kayenta.index.config.IndexConfigurationProperties
+import com.netflix.kayenta.security.AccountCredentials
 import com.netflix.kayenta.security.AccountCredentialsRepository
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository
-import com.netflix.kayenta.storage.MapBackedStorageServiceRepository
 import com.netflix.kayenta.storage.ObjectType
 import com.netflix.kayenta.storage.StorageService
 import com.netflix.kayenta.storage.StorageServiceRepository
@@ -48,7 +49,7 @@ class CanaryConfigIndexingAgentSpec extends Specification {
   Jedis jedis
 
   AccountCredentialsRepository accountCredentialsRepository
-  TestNamedAccountCredentials testCredentials
+  MockAccountCredentials testCredentials
   String mapByApplicationKey
   String pendingUpdatesKey
   StorageService configurationService
@@ -69,15 +70,15 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedisPool = embeddedRedis.pool
     jedis = jedisPool.resource
     accountCredentialsRepository = new MapBackedAccountCredentialsRepository()
-    testCredentials = new TestNamedAccountCredentials()
-    mapByApplicationKey = "kayenta:some-platform:$ACCOUNT_NAME$MAP_BY_APPLICATION_KEY_SUFFIX"
+    testCredentials = new MockAccountCredentials(ACCOUNT_NAME, AccountCredentials.Type.CONFIGURATION_STORE, AccountCredentials.Type.OBJECT_STORE);
+    mapByApplicationKey = "kayenta:$testCredentials.type:$testCredentials.name$MAP_BY_APPLICATION_KEY_SUFFIX"
     pendingUpdatesKey = "kayenta:$testCredentials.type:$testCredentials.name$PENDING_UPDATES_KEY_SUFFIX"
     configurationService = Mock(StorageService)
     objectMapper = new ObjectMapper()
     canaryConfigIndex = new CanaryConfigIndex(jedisPool, objectMapper)
     // We use the current redis time as a baseline to ensure entries aren't inadvertently flushed during testing due to staleness.
     currentTime = canaryConfigIndex.getRedisTime()
-    storageServiceRepository = new MapBackedStorageServiceRepository([configurationService])
+    storageServiceRepository = new StorageServiceRepository(accountCredentialsRepository, [configurationService])
     canaryConfigIndexingAgent = new CanaryConfigIndexingAgent(CURRENT_INSTANCE_ID,
                                                               jedisPool,
                                                               accountCredentialsRepository,
@@ -116,14 +117,14 @@ class CanaryConfigIndexingAgentSpec extends Specification {
 
   def "agent should run if lock is acquired and should set placeholder value since no canary configs are found"() {
     given:
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> []
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> []
     jedis.hvals(mapByApplicationKey) == [NO_INDEXED_CONFIGS_SENTINEL_VALUE]
   }
 
@@ -135,16 +136,16 @@ class CanaryConfigIndexingAgentSpec extends Specification {
       buildCanaryConfigSummary("id2", "name2")
     ]
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> canaryConfigObjectKeys
-    1 * configurationService.loadObject(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, "id1") >> new CanaryConfig(applications: scopedApplications["id1"])
-    1 * configurationService.loadObject(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, "id2") >> new CanaryConfig(applications: scopedApplications["id2"])
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> canaryConfigObjectKeys
+    1 * configurationService.loadObject(testCredentials, ObjectType.CANARY_CONFIG, "id1") >> new CanaryConfig(applications: scopedApplications["id1"])
+    1 * configurationService.loadObject(testCredentials, ObjectType.CANARY_CONFIG, "id2") >> new CanaryConfig(applications: scopedApplications["id2"])
     jedis.hkeys(mapByApplicationKey) == expectedAllApplications as Set
     String canaryConfigSummarySetJson = jedis.hget(mapByApplicationKey, applicationToQuery)
     Set<Map<String, Object>> canaryConfigSummarySet = canaryConfigSummarySetJson != null ? objectMapper.readValue(canaryConfigSummarySetJson, Set) : []
@@ -173,14 +174,14 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedis.rpush(pendingUpdatesKey, "${currentTime + 4}:update:start:3:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
     jedis.rpush(pendingUpdatesKey, "${currentTime + 5}:update:start:4:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> []
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> []
     jedis.hvals(mapByApplicationKey) == [NO_INDEXED_CONFIGS_SENTINEL_VALUE]
     jedis.lrange(pendingUpdatesKey, 0, -1) == ["${currentTime + 4}:update:start:3:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}",
                                                "${currentTime + 5}:update:start:4:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}"]
@@ -193,14 +194,14 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedis.rpush(pendingUpdatesKey, "${currentTime + 2}:update:start:2:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
     jedis.rpush(pendingUpdatesKey, "${currentTime + 3}:update:finish:2")
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> []
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> []
     jedis.hvals(mapByApplicationKey) == [NO_INDEXED_CONFIGS_SENTINEL_VALUE]
     jedis.llen(pendingUpdatesKey) == 0
   }
@@ -215,14 +216,14 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedis.rpush(pendingUpdatesKey, "${currentTime + 4}:update:start:3:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
     jedis.rpush(pendingUpdatesKey, "${currentTime + 5}:update:start:4:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> []
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> []
     jedis.hvals(mapByApplicationKey) == [NO_INDEXED_CONFIGS_SENTINEL_VALUE]
     jedis.lrange(pendingUpdatesKey, 0, -1) == ["${currentTime + 4}:update:start:3:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}",
                                                "${currentTime + 5}:update:start:4:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}"]
@@ -237,14 +238,14 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedis.rpush(pendingUpdatesKey, "${currentTime + 3}:update:finish:2")
     jedis.rpush(pendingUpdatesKey, "${currentTime - new IndexConfigurationProperties().pendingUpdateStaleEntryThresholdMS}:update:start:5:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, true) >> []
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, true) >> []
     jedis.hvals(mapByApplicationKey) == [NO_INDEXED_CONFIGS_SENTINEL_VALUE]
     jedis.llen(pendingUpdatesKey) == 0
   }
@@ -259,17 +260,15 @@ class CanaryConfigIndexingAgentSpec extends Specification {
     jedis.rpush(pendingUpdatesKey, "${currentTime + 5}:update:start:3:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
     jedis.rpush(pendingUpdatesKey, "${currentTime + 6}:update:start:4:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}")
 
-    accountCredentialsRepository.save(ACCOUNT_NAME, testCredentials)
+    accountCredentialsRepository.save(testCredentials)
 
     when:
+    configurationService.appliesTo(testCredentials) >> true
     canaryConfigIndexingAgent.indexCanaryConfigs()
 
     then:
-    1 * configurationService.servicesAccount(ACCOUNT_NAME) >> true
-
-    then:
     // A storage service will remove an open start entry if the operation fails. This test simulates such a failure during the indexing window.
-    1 * configurationService.listObjectKeys(ACCOUNT_NAME, ObjectType.CANARY_CONFIG, null, {
+    1 * configurationService.listObjectKeys(testCredentials, ObjectType.CANARY_CONFIG, null, {
       jedis.lrem(pendingUpdatesKey, 1, "${currentTime + 4}:update:start:5:{\"id\":\"id1\",\"name\":\"name1\",\"updatedTimestamp\":1507570197295,\"updatedTimestampIso\":\"2017-10-09T15:07:23.677Z\",\"applications\":[\"a\"]}") == 1
     }) >> []
 

@@ -18,7 +18,6 @@ package com.netflix.kayenta.google.config;
 
 import com.netflix.kayenta.google.security.GoogleClientFactory;
 import com.netflix.kayenta.google.security.GoogleJsonClientFactory;
-import com.netflix.kayenta.google.security.GoogleNamedAccountCredentials;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.io.IOException;
@@ -66,46 +65,31 @@ public class GoogleConfiguration {
             StringUtils.hasLength(jsonKey)
                 ? new GoogleJsonClientFactory(project, jsonKey)
                 : new GoogleClientFactory(project);
-
-        GoogleNamedAccountCredentials.GoogleNamedAccountCredentialsBuilder
-            googleNamedAccountCredentialsBuilder =
-                GoogleNamedAccountCredentials.builder()
-                    .name(name)
-                    .project(project)
-                    .credentials(googleClientFactory);
+        googleManagedAccount.setCredentials(googleClientFactory);
 
         if (!CollectionUtils.isEmpty(supportedTypes)) {
           if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-            googleNamedAccountCredentialsBuilder.monitoring(googleClientFactory.getMonitoring());
+            googleManagedAccount.setMonitoring(googleClientFactory.getMonitoring());
           }
 
           if (supportedTypes.contains(AccountCredentials.Type.OBJECT_STORE)) {
             String bucket = googleManagedAccount.getBucket();
             String rootFolder = googleManagedAccount.getRootFolder();
 
-            if (StringUtils.isEmpty(bucket)) {
+            if (!StringUtils.hasText(bucket)) {
               throw new IllegalArgumentException(
                   "Google/GCS account " + name + " is required to specify a bucket.");
             }
 
-            if (StringUtils.isEmpty(rootFolder)) {
+            if (!StringUtils.hasText(rootFolder)) {
               throw new IllegalArgumentException(
                   "Google/GCS account " + name + " is required to specify a rootFolder.");
             }
 
-            googleNamedAccountCredentialsBuilder.bucket(bucket);
-            googleNamedAccountCredentialsBuilder.bucketLocation(
-                googleManagedAccount.getBucketLocation());
-            googleNamedAccountCredentialsBuilder.rootFolder(rootFolder);
-            googleNamedAccountCredentialsBuilder.storage(googleClientFactory.getStorage());
+            googleManagedAccount.setStorage(googleClientFactory.getStorage());
           }
-
-          googleNamedAccountCredentialsBuilder.supportedTypes(supportedTypes);
         }
-
-        GoogleNamedAccountCredentials googleNamedAccountCredentials =
-            googleNamedAccountCredentialsBuilder.build();
-        accountCredentialsRepository.save(googleNamedAccountCredentials);
+        accountCredentialsRepository.save(googleManagedAccount);
       } catch (Throwable t) {
         log.error("Could not load Google account " + name + ".", t);
       }

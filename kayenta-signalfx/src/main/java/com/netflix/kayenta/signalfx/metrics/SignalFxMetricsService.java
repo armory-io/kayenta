@@ -54,7 +54,7 @@ import retrofit.RetrofitError;
 
 @Builder
 @Slf4j
-public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccountCredentials>{
+public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccountCredentials> {
 
   private static final String SIGNAL_FLOW_ERROR_TEMPLATE =
       "An error occurred while executing the Signal Flow program. "
@@ -81,7 +81,7 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
 
   @Override
   public String buildQuery(
-          SignalFxNamedAccountCredentials accountCredentials,
+      SignalFxNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -98,7 +98,7 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
 
   @Override
   public List<MetricSet> queryMetrics(
-          SignalFxNamedAccountCredentials accountCredentials,
+      SignalFxNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -139,12 +139,17 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
     } catch (RetrofitError e) {
       ErrorResponse errorResponse = (ErrorResponse) e.getBodyAs(ErrorResponse.class);
       throw new SignalFxRequestError(
-          errorResponse, program, startEpochMilli, endEpochMilli, stepMilli, accountCredentials.getName());
+          errorResponse,
+          program,
+          startEpochMilli,
+          endEpochMilli,
+          stepMilli,
+          accountCredentials.getName());
     }
 
     validateResults(
         signalFlowExecutionResult.getChannelMessages(),
-            accountCredentials.getName(),
+        accountCredentials.getName(),
         startEpochMilli,
         endEpochMilli,
         stepMilli,

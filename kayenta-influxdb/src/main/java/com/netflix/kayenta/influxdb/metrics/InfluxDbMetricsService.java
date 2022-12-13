@@ -20,12 +20,13 @@ import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.InfluxdbCanaryMetricSetQueryConfig;
+import com.netflix.kayenta.influxdb.config.InfluxDbManagedAccount;
 import com.netflix.kayenta.influxdb.model.InfluxDbResult;
-import com.netflix.kayenta.influxdb.security.InfluxDbNamedAccountCredentials;
 import com.netflix.kayenta.influxdb.service.InfluxDbRemoteService;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricSet.MetricSetBuilder;
 import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spectator.api.Id;
 import com.netflix.spectator.api.Registry;
@@ -35,23 +36,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
-@Builder
-public class InfluxDbMetricsService implements MetricsService {
-  @NotNull @Singular @Getter private List<String> accountNames;
-
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
-
-  @Autowired private final Registry registry;
-
-  @Autowired private final InfluxDbQueryBuilder queryBuilder;
+@AllArgsConstructor
+public class InfluxDbMetricsService implements MetricsService<InfluxDbManagedAccount> {
+  private final AccountCredentialsRepository accountCredentialsRepository;
+  private final Registry registry;
+  private final InfluxDbQueryBuilder queryBuilder;
 
   @Override
   public String getType() {
@@ -59,19 +52,11 @@ public class InfluxDbMetricsService implements MetricsService {
   }
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+      InfluxDbManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
-
-    InfluxDbNamedAccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
 
     InfluxDbRemoteService remoteService = accountCredentials.getInfluxDbRemoteService();
     InfluxdbCanaryMetricSetQueryConfig queryConfig =
@@ -84,6 +69,12 @@ public class InfluxDbMetricsService implements MetricsService {
     List<InfluxDbResult> influxDbResults = queryInfluxdb(remoteService, metricSetName, query);
 
     return buildMetricSets(metricSetName, influxDbResults, canaryScope, canaryMetricConfig, query);
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof InfluxDbManagedAccount
+        && account.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE);
   }
 
   private List<InfluxDbResult> queryInfluxdb(

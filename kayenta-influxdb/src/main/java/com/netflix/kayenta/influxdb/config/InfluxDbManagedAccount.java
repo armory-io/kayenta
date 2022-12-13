@@ -16,19 +16,41 @@
 
 package com.netflix.kayenta.influxdb.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.canary.providers.metrics.InfluxdbCanaryMetricSetQueryConfig;
+import com.netflix.kayenta.influxdb.service.InfluxDbRemoteService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
-public class InfluxDbManagedAccount {
+public class InfluxDbManagedAccount extends AccountCredentials {
   @NotNull private String name;
   private String apiKey;
   private String applicationKey;
 
+  @NotNull @Getter @Setter private String baseUrl;
   @NotNull private RemoteService endpoint;
+  @JsonIgnore @Setter @Getter private transient InfluxDbRemoteService influxDbRemoteService;
+
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    // NOMINALLY this is replaced by setBaseUrl in the future...
+    this.baseUrl = endpoint.getBaseUrl();
+  }
 
   private List<AccountCredentials.Type> supportedTypes;
+
+  @Override
+  public String getType() {
+    return InfluxdbCanaryMetricSetQueryConfig.SERVICE_TYPE;
+  }
 }

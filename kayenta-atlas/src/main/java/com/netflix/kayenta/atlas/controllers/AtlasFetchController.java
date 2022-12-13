@@ -64,14 +64,12 @@ public class AtlasFetchController {
       @ApiParam(defaultValue = "2000-01-01T04:00:00Z") @RequestParam Instant end,
       @ApiParam(defaultValue = "300") @RequestParam Long step)
       throws IOException {
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     AtlasCanaryMetricSetQueryConfig atlasCanaryMetricSetQueryConfig =
         AtlasCanaryMetricSetQueryConfig.builder().q(q).build();
@@ -91,8 +89,8 @@ public class AtlasFetchController {
 
     String metricSetListId =
         synchronousQueryProcessor.executeQuery(
-            resolvedMetricsAccountName,
-            resolvedStorageAccountName,
+            resolvedMetricsAccount,
+            resolvedStorageAccount,
             CanaryConfig.builder().metric(canaryMetricConfig).build(),
             0,
             atlasCanaryScope);

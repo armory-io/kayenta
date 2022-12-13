@@ -32,7 +32,10 @@ import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
 import com.netflix.spinnaker.orca.api.pipeline.models.PipelineExecution;
 import com.netflix.spinnaker.orca.api.pipeline.models.StageExecution;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import org.apache.commons.lang3.StringUtils;
@@ -50,13 +53,13 @@ public class MetricSetMixerServiceTask implements RetryableTask {
   @Autowired
   public MetricSetMixerServiceTask(
       AccountCredentialsRepository accountCredentialsRepository,
-      StorageServiceRepository storageServiceRepository,
       MetricSetMixerService metricSetMixerService,
+      StorageServiceRepository storageServiceRepository,
       ExecutionMapper executionMapper) {
     this.accountCredentialsRepository = accountCredentialsRepository;
-    this.storageServiceRepository = storageServiceRepository;
     this.metricSetMixerService = metricSetMixerService;
     this.executionMapper = executionMapper;
+    this.storageServiceRepository = storageServiceRepository;
   }
 
   @Override
@@ -80,12 +83,8 @@ public class MetricSetMixerServiceTask implements RetryableTask {
         getMetricSetListIds(stage.getExecution(), (String) context.get("controlRefidPrefix"));
     List<String> experimentMetricSetListIds =
         getMetricSetListIds(stage.getExecution(), (String) context.get("experimentRefidPrefix"));
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
-
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getRequiredOne(storageAccountName);
     CanaryConfig canaryConfig = executionMapper.getCanaryConfig(stage.getExecution());
 
     int controlMetricSetListIdsSize = controlMetricSetListIds.size();
@@ -100,35 +99,38 @@ public class MetricSetMixerServiceTask implements RetryableTask {
               + experimentMetricSetListIdsSize
               + ").");
     }
+    StorageService storageService = storageServiceRepository.getRequiredOne(storageAccount);
 
     List<MetricSet> controlMetricSetList =
         controlMetricSetListIds.stream()
             .map(
-                (id) ->
-                    (List<MetricSet>)
-                        storageService.loadObject(
-                            resolvedAccountName, ObjectType.METRIC_SET_LIST, id))
+                (id) -> {
+                  List<MetricSet> metricsSet =
+                      (List<MetricSet>)
+                          storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id);
+                  return metricsSet;
+                })
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
-
     List<MetricSet> experimentMetricSetList =
         experimentMetricSetListIds.stream()
             .map(
-                (id) ->
-                    (List<MetricSet>)
-                        storageService.loadObject(
-                            resolvedAccountName, ObjectType.METRIC_SET_LIST, id))
+                (id) -> {
+                  List<MetricSet> metricsSet =
+                      (List<MetricSet>)
+                          storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id);
+                  return metricsSet;
+                })
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
 
     List<MetricSetPair> aggregatedMetricSetPairList =
         metricSetMixerService.mixAll(
             canaryConfig.getMetrics(), controlMetricSetList, experimentMetricSetList);
-
     String aggregatedMetricSetPairListId = UUID.randomUUID() + "";
 
     storageService.storeObject(
-        resolvedAccountName,
+        storageAccount,
         ObjectType.METRIC_SET_PAIR_LIST,
         aggregatedMetricSetPairListId,
         aggregatedMetricSetPairList);

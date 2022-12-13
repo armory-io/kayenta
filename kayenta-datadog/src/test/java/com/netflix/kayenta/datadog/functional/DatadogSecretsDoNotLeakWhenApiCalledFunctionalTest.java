@@ -30,7 +30,6 @@ import com.netflix.kayenta.datadog.config.DatadogConfiguration;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
 import com.netflix.kayenta.datadog.service.DatadogTimeSeries;
 import com.netflix.kayenta.model.DatadogMetricDescriptorsResponse;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.spinnaker.retrofit.Slf4jRetrofitLogger;
 import com.squareup.okhttp.OkHttpClient;
@@ -83,7 +82,7 @@ public class DatadogSecretsDoNotLeakWhenApiCalledFunctionalTest {
         DatadogConfiguration.createDatadogRemoteService(
             retrofitClientFactory,
             objectMapper,
-            new RemoteService().setBaseUrl("http://localhost:" + mockServerRule.getPort()),
+            "http://localhost:" + mockServerRule.getPort(),
             new OkHttpClient());
   }
 

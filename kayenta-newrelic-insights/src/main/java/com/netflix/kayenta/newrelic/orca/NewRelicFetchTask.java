@@ -77,21 +77,14 @@ public class NewRelicFetchTask implements RetryableTask {
       throw new RuntimeException(e);
     }
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(
-                (String) context.get("metricsAccountName"), AccountCredentials.Type.METRICS_STORE)
-            .getName();
-
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(
-                (String) context.get("storageAccountName"), AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOne((String) context.get("metricsAccountName"));
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            (String) context.get("storageAccountName"), AccountCredentials.Type.OBJECT_STORE);
     return synchronousQueryProcessor.executeQueryAndProduceTaskResult(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        metricsAccount,
+        storageAccount,
         kayentaObjectMapper.convertValue(context.get("canaryConfig"), CanaryConfig.class),
         (Integer) stage.getContext().get("metricIndex"),
         canaryScope);

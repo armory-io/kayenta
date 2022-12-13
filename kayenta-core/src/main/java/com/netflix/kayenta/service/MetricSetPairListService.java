@@ -21,62 +21,70 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
+import com.netflix.kayenta.storage.StorageServiceRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
+@Component
 public class MetricSetPairListService {
 
-  private final AccountCredentialsRepository accountCredentialsRepository;
+  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
+  @Autowired private final StorageServiceRepository storageServices;
 
-  public List<MetricSetPair> loadMetricSetPairList(String accountName, String metricSetPairListId) {
-    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
-
-    return storageService.loadObject(accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+  public List<MetricSetPair> loadMetricSetPairList(String account, String metricSetPairListId) {
+    AccountCredentials accountCredentials = accountCredentialsRepository.getRequiredOne(account);
+    return (List<MetricSetPair>)
+        storageServices
+            .getRequiredOne(accountCredentials)
+            .loadObject(accountCredentials, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
   }
 
   public Optional<MetricSetPair> loadMetricSetPair(
-      String accountName, String metricSetPairListId, String metricSetPairId) {
-    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
+      String account, String metricSetPairListId, String metricSetPairId) {
+    AccountCredentials accountCredentials = accountCredentialsRepository.getRequiredOne(account);
+    StorageService storageService = storageServices.getRequiredOne(accountCredentials);
 
     List<MetricSetPair> metricSetPairList =
-        storageService.loadObject(accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+        (List<MetricSetPair>)
+            storageService.loadObject(
+                accountCredentials, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
     return metricSetPairList.stream()
         .filter(metricSetPair -> metricSetPair.getId().equals(metricSetPairId))
         .findFirst();
   }
 
-  public String storeMetricSetPairList(String accountName, List<MetricSetPair> metricSetPairList) {
-    StorageService storageService = accountCredentialsRepository.<StorageService>getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
+  public String storeMetricSetPairList(String account, List<MetricSetPair> metricSetPairList) {
+    AccountCredentials accountCredentials = accountCredentialsRepository.getRequiredOne(account);
+    StorageService storageService = storageServices.getRequiredOne(accountCredentials);
     String metricSetPairListId = UUID.randomUUID() + "";
 
     storageService.storeObject(
-            accountName,
+        accountCredentials,
         ObjectType.METRIC_SET_PAIR_LIST,
         metricSetPairListId,
         metricSetPairList);
     return metricSetPairListId;
   }
 
-  public void deleteMetricSetPairList(String accountName, String metricSetPairListId) {
-    StorageService storageService = accountCredentialsRepository.getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
+  public void deleteMetricSetPairList(String account, String metricSetPairListId) {
+    AccountCredentials accountCredentials = accountCredentialsRepository.getRequiredOne(account);
 
-    storageService.deleteObject(
-            accountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+    storageServices
+        .getRequiredOne(accountCredentials)
+        .deleteObject(accountCredentials, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
   }
 
-  public List<Map<String, Object>> listAllMetricSetPairLists(String accountName) {
-    StorageService storageService = accountCredentialsRepository.getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE).getCredentials();
+  public List<Map<String, Object>> listAllMetricSetPairLists(String account) {
 
-    return storageService.listObjectKeys(accountName, ObjectType.METRIC_SET_PAIR_LIST);
-  }
-
-  private String getAccount(String accountName) {
-    return accountCredentialsRepository
-        .getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE)
-        .getName();
+    AccountCredentials accountCredentials = accountCredentialsRepository.getRequiredOne(account);
+    return storageServices
+        .getRequiredOne(accountCredentials)
+        .listObjectKeys(accountCredentials, ObjectType.METRIC_SET_PAIR_LIST);
   }
 }

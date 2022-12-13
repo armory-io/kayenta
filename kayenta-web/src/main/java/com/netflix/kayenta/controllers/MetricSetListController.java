@@ -55,14 +55,13 @@ public class MetricSetListController {
   public List<MetricSet> loadMetricSetList(
       @RequestParam(required = false) final String accountName,
       @PathVariable String metricSetListId) {
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    AccountCredentials configAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            accountName, AccountCredentials.Type.OBJECT_STORE);
+    StorageService storageService = storageServiceRepository.getRequiredOne(configAccount);
 
-    return storageService.loadObject(
-        resolvedAccountName, ObjectType.METRIC_SET_LIST, metricSetListId);
+    return (List<MetricSet>)
+        storageService.loadObject(configAccount, ObjectType.METRIC_SET_LIST, metricSetListId);
   }
 
   @ApiOperation(value = "Write a metric set list to object storage")
@@ -71,15 +70,14 @@ public class MetricSetListController {
       @RequestParam(required = false) final String accountName,
       @RequestBody List<MetricSet> metricSetList)
       throws IOException {
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
+    AccountCredentials resolvedAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            accountName, AccountCredentials.Type.OBJECT_STORE);
+    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccount);
     String metricSetListId = UUID.randomUUID() + "";
 
     storageService.storeObject(
-        resolvedAccountName, ObjectType.METRIC_SET_LIST, metricSetListId, metricSetList);
+        resolvedAccount, ObjectType.METRIC_SET_LIST, metricSetListId, metricSetList);
 
     return Collections.singletonMap("metricSetListId", metricSetListId);
   }
@@ -90,10 +88,9 @@ public class MetricSetListController {
       @RequestParam(required = false) final String accountName,
       @PathVariable String metricSetListId,
       HttpServletResponse response) {
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedAccountName =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            accountName, AccountCredentials.Type.OBJECT_STORE);
     StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
 
     storageService.deleteObject(resolvedAccountName, ObjectType.METRIC_SET_LIST, metricSetListId);
@@ -105,10 +102,9 @@ public class MetricSetListController {
   @RequestMapping(method = RequestMethod.GET)
   public List<Map<String, Object>> listAllMetricSetLists(
       @RequestParam(required = false) final String accountName) {
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(accountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedAccountName =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            accountName, AccountCredentials.Type.OBJECT_STORE);
     StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
 
     return storageService.listObjectKeys(resolvedAccountName, ObjectType.METRIC_SET_LIST);

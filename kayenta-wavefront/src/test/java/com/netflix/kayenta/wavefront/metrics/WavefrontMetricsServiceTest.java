@@ -26,8 +26,7 @@ import org.junit.Test;
 
 public class WavefrontMetricsServiceTest {
 
-  private WavefrontMetricsService wavefrontMetricsService =
-      new WavefrontMetricsService(null, null);
+  private WavefrontMetricsService wavefrontMetricsService = new WavefrontMetricsService(null, null);
   private static final String METRIC_NAME = "example.metric.name";
   private static final String SCOPE = "env=test";
   private static final String AGGREGATE = "avg";

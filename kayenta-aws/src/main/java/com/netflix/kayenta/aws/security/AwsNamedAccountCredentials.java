@@ -17,57 +17,45 @@
 package com.netflix.kayenta.aws.security;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.netflix.kayenta.aws.storage.S3StorageService;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.storage.StorageService;
-import lombok.Builder;
+import java.util.List;
+import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.Singular;
+import lombok.experimental.SuperBuilder;
 
-import javax.validation.constraints.NotNull;
-import java.util.List;
-
-@Builder
+@SuperBuilder
 @Data
 public class AwsNamedAccountCredentials extends AccountCredentials {
 
-    @NotNull
-    private String name;
+  @NotNull private String name;
 
-    @NotNull
-    @Singular
-    private List<Type> supportedTypes;
+  @NotNull @Singular private List<Type> supportedTypes;
 
+  private String bucket;
+  private String region;
+  private String rootFolder;
+  private String endpoint;
+  private String proxyHost;
+  private String proxyPort;
+  private String proxyProtocol;
 
-    private String bucket;
-    private String region;
-    private String rootFolder;
-    private String endpoint;
-    private String proxyHost;
-    private String proxyPort;
-    private String proxyProtocol;
+  private String profileName;
+  private ExplicitAwsCredentials explicitCredentials;
 
-    private String profileName;
-    private ExplicitAwsCredentials explicitCredentials;
-    private S3StorageService supportingService;
+  @Data
+  public static class ExplicitAwsCredentials {
 
-    @Data
-    public static class ExplicitAwsCredentials {
+    String accessKey;
+    String secretKey;
+    String sessionToken;
+  }
 
-        String accessKey;
-        String secretKey;
-        String sessionToken;
-    }
+  @JsonIgnore private AmazonS3 credentials;
 
-    private AmazonS3 credentials;
-
-    @Override
-    public String getType() {
-        return "aws";
-    }
-
-    @Override
-    public S3StorageService getServiceForType(Type type) {
-        return supportingService;
-    }
+  @Override
+  public String getType() {
+    return "aws";
+  }
 }

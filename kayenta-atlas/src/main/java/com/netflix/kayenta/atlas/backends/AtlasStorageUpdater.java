@@ -18,7 +18,6 @@ package com.netflix.kayenta.atlas.backends;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.atlas.model.AtlasStorage;
 import com.netflix.kayenta.atlas.service.AtlasStorageRemoteService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.spinnaker.security.AuthenticatedRequest;
 import com.squareup.okhttp.OkHttpClient;
@@ -46,14 +45,9 @@ public class AtlasStorageUpdater {
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient) {
-    RemoteService remoteService = new RemoteService();
-    remoteService.setBaseUrl(uri);
     AtlasStorageRemoteService atlasStorageRemoteService =
         retrofitClientFactory.createClient(
-            AtlasStorageRemoteService.class,
-            new JacksonConverter(objectMapper),
-            remoteService,
-            okHttpClient);
+            AtlasStorageRemoteService.class, new JacksonConverter(objectMapper), uri, okHttpClient);
     try {
       Map<String, Map<String, AtlasStorage>> atlasStorageMap =
           AuthenticatedRequest.allowAnonymous(atlasStorageRemoteService::fetch);

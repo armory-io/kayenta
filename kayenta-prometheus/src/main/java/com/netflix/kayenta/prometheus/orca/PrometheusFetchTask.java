@@ -85,20 +85,14 @@ public class PrometheusFetchTask implements RetryableTask {
       log.warn("Unable to parse JSON scope", e);
       throw new RuntimeException(e);
     }
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOneBy(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getRequiredOneBy(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     return synchronousQueryProcessor.executeQueryAndProduceTaskResult(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
-        canaryConfig,
-        metricIndex,
-        canaryScope);
+        metricsAccount, storageAccount, canaryConfig, metricIndex, canaryScope);
   }
 }

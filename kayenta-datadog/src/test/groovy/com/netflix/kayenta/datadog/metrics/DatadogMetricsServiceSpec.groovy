@@ -27,7 +27,7 @@ import spock.lang.Unroll
 class DatadogMetricsServiceSpec extends Specification {
 
   @Shared
-  DatadogMetricsService datadogMetricsService = DatadogMetricsService.builder().build()
+  DatadogMetricsService datadogMetricsService =new DatadogMetricsService() ;
 
   @Unroll
   void "Can dry-run query generation"() {

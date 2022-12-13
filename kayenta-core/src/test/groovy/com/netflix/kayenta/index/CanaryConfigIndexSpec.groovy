@@ -17,6 +17,7 @@
 package com.netflix.kayenta.index
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.netflix.kayenta.MockAccountCredentials
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction
 import com.netflix.spinnaker.kork.jedis.EmbeddedRedis
 import redis.clients.jedis.Jedis
@@ -40,7 +41,7 @@ class CanaryConfigIndexSpec extends Specification {
   @AutoCleanup
   Jedis jedis
 
-  TestNamedAccountCredentials testCredentials
+  MockAccountCredentials testCredentials
   String mapByApplicationKey
   ObjectMapper objectMapper
   // We use the current redis time as a baseline to ensure the entries aren't flushed due to staleness.
@@ -56,8 +57,8 @@ class CanaryConfigIndexSpec extends Specification {
   def setup() {
     jedisPool = embeddedRedis.pool
     jedis = jedisPool.resource
-    testCredentials = new TestNamedAccountCredentials()
-    mapByApplicationKey = "kayenta:some-platform:$ACCOUNT_NAME$MAP_BY_APPLICATION_KEY_SUFFIX"
+    testCredentials = new MockAccountCredentials(ACCOUNT_NAME);
+    mapByApplicationKey = "kayenta:$testCredentials.type:$ACCOUNT_NAME$MAP_BY_APPLICATION_KEY_SUFFIX"
     objectMapper = new ObjectMapper()
     canaryConfigIndex = new CanaryConfigIndex(jedisPool, objectMapper)
     // We use the current redis time as a baseline to ensure entries aren't inadvertently flushed during testing due to staleness.

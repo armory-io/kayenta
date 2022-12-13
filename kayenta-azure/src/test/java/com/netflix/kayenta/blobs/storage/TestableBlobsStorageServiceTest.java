@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.blobs.storage;
+package com.netflix.kayenta.azure.storage;
 
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.azure.security.AzureCredentials;
-import com.netflix.kayenta.azure.security.AzureNamedAccountCredentials;
+import com.netflix.kayenta.azure.config.AzureManagedAccount;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.index.CanaryConfigIndex;
-import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
-import com.tngtech.java.junit.dataprovider.*;
+import com.tngtech.java.junit.dataprovider.DataProvider;
+import com.tngtech.java.junit.dataprovider.DataProviderRunner;
+import com.tngtech.java.junit.dataprovider.UseDataProvider;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.*;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 @RunWith(DataProviderRunner.class)
@@ -44,7 +43,7 @@ public class TestableBlobsStorageServiceTest {
 
   private String rootFolder = "testRootFolder";
   private TestableBlobsStorageService testBlobsStorageService;
-  private AccountCredentials accountCredentials;
+  private AzureManagedAccount accountCredentials;
   private AccountCredentialsRepository credentialsRepository;
   private CanaryConfigIndex mockedCanaryConfigIndex;
 
@@ -56,35 +55,24 @@ public class TestableBlobsStorageServiceTest {
     String azureAccountName = "AzDev_Testing_Account_1";
     String accountAccessKey = "testAccessKey";
 
-    AzureNamedAccountCredentials.AzureNamedAccountCredentialsBuilder credentialsBuilder =
-        AzureNamedAccountCredentials.builder();
+    AzureManagedAccount.AzureManagedAccountBuilder credentialsBuilder =
+        AzureManagedAccount.builder();
     credentialsBuilder.name(kayenataAccountName);
-    credentialsBuilder.credentials(
-        new AzureCredentials(azureAccountName, accountAccessKey, "core.windows.net"));
+    credentialsBuilder.accountAccessKey(accountAccessKey);
+    credentialsBuilder.endpointSuffix("core.windows.net");
     credentialsBuilder.rootFolder(rootFolder);
     credentialsBuilder.azureContainer(null);
     accountCredentials = credentialsBuilder.build();
-
-    credentialsRepository = new MapBackedAccountCredentialsRepository();
-    credentialsRepository.save(kayenataAccountName, accountCredentials);
 
     ObjectMapper kayentaObjectMapper = new ObjectMapper();
     this.mockedCanaryConfigIndex = mock(CanaryConfigIndex.class);
 
     this.testBlobsStorageService =
-        new TestableBlobsStorageService(
-            testAccountNames, kayentaObjectMapper, credentialsRepository, mockedCanaryConfigIndex);
+        new TestableBlobsStorageService(kayentaObjectMapper, mockedCanaryConfigIndex);
   }
 
   @After
   public void tearDown() {}
-
-  @Test
-  @UseDataProvider("servicesAccountDataset")
-  public void servicesAccount(String accountName, boolean expected) {
-    log.info(String.format("Running servicesAccountTest(%s)", accountName));
-    Assert.assertEquals(expected, testBlobsStorageService.servicesAccount(accountName));
-  }
 
   @Test
   @UseDataProvider("loadObjectDataset")
@@ -103,7 +91,7 @@ public class TestableBlobsStorageServiceTest {
       testBlobsStorageService.blobStored.put("application", applications.get(0));
 
       CanaryConfig result =
-          testBlobsStorageService.loadObject(accountName, objectType, testItemKey);
+          testBlobsStorageService.loadObject(accountCredentials, objectType, testItemKey);
       Assert.assertEquals(applications.get(0), result.getApplications().get(0));
     } catch (IllegalArgumentException e) {
       Assert.assertEquals("Unable to resolve account " + accountName + ".", e.getMessage());
@@ -145,7 +133,7 @@ public class TestableBlobsStorageServiceTest {
     try {
       log.info(String.format("Running storeObjectTest for (%s)", fakeBlobName));
       testBlobsStorageService.storeObject(
-          accountName, objectType, testItemKey, canaryConfig, fakeFileName, isAnUpdate);
+          accountCredentials, objectType, testItemKey, canaryConfig, fakeFileName, isAnUpdate);
       HashMap<String, String> result = testBlobsStorageService.blobStored;
       Assert.assertEquals(fakeBlobName, result.get("blob"));
     } catch (IllegalArgumentException e) {
@@ -175,7 +163,7 @@ public class TestableBlobsStorageServiceTest {
     try {
       log.info(
           "Running deleteObjectTest for rootFolder/" + objectType.getGroup() + "/" + testItemKey);
-      testBlobsStorageService.deleteObject(accountName, objectType, testItemKey);
+      testBlobsStorageService.deleteObject(accountCredentials, objectType, testItemKey);
       HashMap<String, String> result = testBlobsStorageService.blobStored;
       Assert.assertEquals("invoked", result.get(String.format("deleteIfexists(%s)", fakeBlobName)));
     } catch (IllegalArgumentException e) {
@@ -191,7 +179,8 @@ public class TestableBlobsStorageServiceTest {
     try {
       log.info("Running listObjectKeysTest for rootFolder" + "/" + objectType.getGroup() + "/");
       List<Map<String, Object>> result =
-          testBlobsStorageService.listObjectKeys(accountName, objectType, applications, skipIndex);
+          testBlobsStorageService.listObjectKeys(
+              accountCredentials, objectType, applications, skipIndex);
       if (objectType == ObjectType.CANARY_CONFIG) {
         Assert.assertEquals("canary_test", result.get(0).get("name"));
       } else {

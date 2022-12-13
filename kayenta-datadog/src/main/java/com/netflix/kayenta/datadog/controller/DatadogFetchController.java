@@ -83,14 +83,11 @@ public class DatadogFetchController {
             start, "start", datadogConfigurationTestControllerDefaultProperties);
     end = determineDefaultProperty(end, "end", datadogConfigurationTestControllerDefaultProperties);
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     DatadogCanaryMetricSetQueryConfig datadogCanaryMetricSetQueryConfig =
         DatadogCanaryMetricSetQueryConfig.builder().metricName(metricName).build();
@@ -107,12 +104,6 @@ public class DatadogFetchController {
     canaryScope.setEnd(end != null ? Instant.parse(end) : null);
 
     return synchronousQueryProcessor.processQueryAndReturnMap(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
-        null,
-        canaryMetricConfig,
-        0,
-        canaryScope,
-        dryRun);
+        metricsAccount, storageAccount, null, canaryMetricConfig, 0, canaryScope, dryRun);
   }
 }

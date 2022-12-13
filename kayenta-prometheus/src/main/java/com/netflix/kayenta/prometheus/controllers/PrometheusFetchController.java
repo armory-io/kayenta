@@ -118,14 +118,13 @@ public class PrometheusFetchController {
         determineDefaultProperty(
             end, "end", prometheusConfigurationTestControllerDefaultProperties);
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOneBy(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getRequiredOneBy(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     PrometheusCanaryMetricSetQueryConfig.PrometheusCanaryMetricSetQueryConfigBuilder
         prometheusCanaryMetricSetQueryConfigBuilder =
@@ -160,12 +159,6 @@ public class PrometheusFetchController {
     }
 
     return synchronousQueryProcessor.processQueryAndReturnMap(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
-        null,
-        canaryMetricConfig,
-        0,
-        prometheusCanaryScope,
-        dryRun);
+        metricsAccount, storageAccount, null, canaryMetricConfig, 0, prometheusCanaryScope, dryRun);
   }
 }

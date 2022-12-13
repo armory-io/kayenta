@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableMap;
 import com.netflix.kayenta.canary.CanaryJudge;
 import com.netflix.kayenta.canary.ExecutionMapper;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.orca.api.pipeline.RetryableTask;
 import com.netflix.spinnaker.orca.api.pipeline.TaskResult;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
@@ -40,7 +39,6 @@ import org.springframework.stereotype.Component;
 public class CompareJudgeResultsTask implements RetryableTask {
 
   private final AccountCredentialsRepository accountCredentialsRepository;
-  private final StorageServiceRepository storageServiceRepository;
   private final List<CanaryJudge> canaryJudges;
   private final ObjectMapper objectMapper;
   private final ExecutionMapper executionMapper;
@@ -48,12 +46,10 @@ public class CompareJudgeResultsTask implements RetryableTask {
   @Autowired
   public CompareJudgeResultsTask(
       AccountCredentialsRepository accountCredentialsRepository,
-      StorageServiceRepository storageServiceRepository,
       List<CanaryJudge> canaryJudges,
       ObjectMapper kayentaObjectMapper,
       ExecutionMapper executionMapper) {
     this.accountCredentialsRepository = accountCredentialsRepository;
-    this.storageServiceRepository = storageServiceRepository;
     this.canaryJudges = canaryJudges;
     this.objectMapper = kayentaObjectMapper;
     this.executionMapper = executionMapper;

@@ -22,11 +22,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.atlas.backends.AtlasStorageDatabase;
 import com.netflix.kayenta.atlas.backends.BackendDatabase;
 import com.netflix.kayenta.atlas.canary.AtlasCanaryScope;
+import com.netflix.kayenta.atlas.config.AtlasManagedAccount;
 import com.netflix.kayenta.atlas.config.AtlasSSEConverter;
 import com.netflix.kayenta.atlas.model.AtlasResults;
 import com.netflix.kayenta.atlas.model.AtlasResultsHelper;
 import com.netflix.kayenta.atlas.model.Backend;
-import com.netflix.kayenta.atlas.security.AtlasNamedAccountCredentials;
 import com.netflix.kayenta.atlas.service.AtlasRemoteService;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
@@ -34,8 +34,8 @@ import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.AtlasCanaryMetricSetQueryConfig;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.util.Retry;
 import com.netflix.spectator.api.Registry;
@@ -45,23 +45,18 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Builder
 @Slf4j
-public class AtlasMetricsService implements MetricsService {
+public class AtlasMetricsService implements MetricsService<AtlasManagedAccount> {
 
   public final String URI_SCHEME = "https";
 
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry an Atlas query
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
-
-  @NotNull @Singular @Getter private List<String> accountNames;
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -79,17 +74,8 @@ public class AtlasMetricsService implements MetricsService {
   }
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  private AtlasNamedAccountCredentials getCredentials(String accountName) {
-    return accountCredentialsRepository.getRequiredOne(accountName);
-  }
-
-  @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+      AtlasManagedAccount credentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -107,7 +93,6 @@ public class AtlasMetricsService implements MetricsService {
     }
 
     AtlasCanaryScope atlasCanaryScope = (AtlasCanaryScope) canaryScope;
-    AtlasNamedAccountCredentials credentials = getCredentials(accountName);
     BackendDatabase backendDatabase = credentials.getBackendUpdater().getBackendDatabase();
     String uri = backendDatabase.getUriForLocation(URI_SCHEME, atlasCanaryScope.getLocation());
 
@@ -176,9 +161,7 @@ public class AtlasMetricsService implements MetricsService {
               + atlasCanaryScope.getEnvironment());
     }
 
-    RemoteService remoteService = new RemoteService();
     log.info("Using Atlas backend {}", uri);
-    remoteService.setBaseUrl(uri);
     AtlasSSEConverter atlasSSEConverter =
         new AtlasSSEConverter(
             kayentaObjectMapper,
@@ -188,7 +171,7 @@ public class AtlasMetricsService implements MetricsService {
 
     AtlasRemoteService atlasRemoteService =
         retrofitClientFactory.createClient(
-            AtlasRemoteService.class, atlasSSEConverter, remoteService, okHttpClient);
+            AtlasRemoteService.class, atlasSSEConverter, uri, okHttpClient);
     AtlasCanaryMetricSetQueryConfig atlasMetricSetQuery =
         (AtlasCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
     String decoratedQuery = atlasMetricSetQuery.getQ() + "," + atlasCanaryScope.cq();
@@ -276,5 +259,12 @@ public class AtlasMetricsService implements MetricsService {
     }
 
     return metricSetList;
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof AtlasManagedAccount
+        && (account.getSupportedTypes().contains(AccountCredentials.Type.CONFIGURATION_STORE)
+            || account.getSupportedTypes().contains(AccountCredentials.Type.OBJECT_STORE));
   }
 }

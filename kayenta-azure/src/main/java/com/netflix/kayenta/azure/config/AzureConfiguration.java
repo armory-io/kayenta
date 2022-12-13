@@ -16,8 +16,9 @@
 
 package com.netflix.kayenta.azure.config;
 
-import com.netflix.kayenta.azure.security.AzureCredentials;
-import com.netflix.kayenta.azure.security.AzureNamedAccountCredentials;
+import com.microsoft.azure.storage.CloudStorageAccount;
+import com.microsoft.azure.storage.blob.CloudBlobClient;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.util.List;
@@ -28,7 +29,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 @Configuration
@@ -53,52 +53,59 @@ public class AzureConfiguration {
 
     for (AzureManagedAccount azureManagedAccount : azureAccounts) {
       String name = azureManagedAccount.getName();
-      String storageAccountName = azureManagedAccount.getStorageAccountName();
       List<AccountCredentials.Type> supportedTypes = azureManagedAccount.getSupportedTypes();
 
-      log.info("Registering Azure account {} with supported types {}.", name, supportedTypes);
+      String container = azureManagedAccount.getContainer();
+      String rootFolder = azureManagedAccount.getRootFolder();
+
+      if (!StringUtils.hasText(container)) {
+        throw new IllegalArgumentException(
+            "Azure/Blobs account " + name + " is required to specify a container.");
+      }
+
+      if (!StringUtils.hasText(rootFolder)) {
+        throw new IllegalArgumentException(
+            "Azure/Blobs account " + name + " is required to specify a rootFolder.");
+      }
 
       try {
-        String accountAccessKey = azureManagedAccount.getAccountAccessKey();
-        String endpointSuffix = azureManagedAccount.getEndpointSuffix();
-        AzureCredentials azureCredentials =
-            new AzureCredentials(storageAccountName, accountAccessKey, endpointSuffix);
-
-        AzureNamedAccountCredentials.AzureNamedAccountCredentialsBuilder
-            azureNamedAccountCredentialsBuilder =
-                AzureNamedAccountCredentials.builder().name(name).credentials(azureCredentials);
-
-        if (!CollectionUtils.isEmpty(supportedTypes)) {
-          if (supportedTypes.contains(AccountCredentials.Type.OBJECT_STORE)) {
-            String container = azureManagedAccount.getContainer();
-            String rootFolder = azureManagedAccount.getRootFolder();
-
-            if (StringUtils.isEmpty(container)) {
-              throw new IllegalArgumentException(
-                  "Azure/Blobs account " + name + " is required to specify a container.");
-            }
-
-            if (StringUtils.isEmpty(rootFolder)) {
-              throw new IllegalArgumentException(
-                  "Azure/Blobs account " + name + " is required to specify a rootFolder.");
-            }
-
-            azureNamedAccountCredentialsBuilder.rootFolder(rootFolder);
-            azureNamedAccountCredentialsBuilder.azureContainer(
-                azureCredentials.getAzureContainer(container));
-          }
-
-          azureNamedAccountCredentialsBuilder.supportedTypes(supportedTypes);
-        }
-
-        AzureNamedAccountCredentials azureNamedAccountCredentials =
-            azureNamedAccountCredentialsBuilder.build();
-        accountCredentialsRepository.save(azureNamedAccountCredentials);
-      } catch (Throwable t) {
-        log.error("Could not load Azure account " + name + ".", t);
+        azureManagedAccount.setAzureContainer(getAzureContainer(azureManagedAccount));
+      } catch (Exception e) {
+        throw new RuntimeException("Error configuring azure clob storage on account " + name, e);
       }
+      log.info("Registering Azure account {} with supported types {}.", name, supportedTypes);
+
+      accountCredentialsRepository.save(azureManagedAccount);
     }
 
     return true;
+  }
+
+  public CloudBlobContainer getAzureContainer(AzureManagedAccount account) throws Exception {
+    final String storageConnectionString =
+        "DefaultEndpointsProtocol=https;"
+            + "AccountName="
+            + account.getStorageAccountName()
+            + ";"
+            + "AccountKey="
+            + account.getAccountAccessKey()
+            + ";"
+            + "EndpointSuffix="
+            + account.getEndpointSuffix();
+    // Retrieve storage account from connection-string.
+    CloudStorageAccount storageAccount = CloudStorageAccount.parse(storageConnectionString);
+
+    // Create the blob client.
+    CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
+
+    // Get a reference to a container.
+    // The container name must be lower case
+
+    CloudBlobContainer azureContainer = blobClient.getContainerReference(account.getContainer());
+
+    // Create the container if it does not exist.
+    azureContainer.createIfNotExists();
+
+    return azureContainer;
   }
 }

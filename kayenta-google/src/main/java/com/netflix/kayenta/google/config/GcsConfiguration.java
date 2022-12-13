@@ -14,28 +14,30 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.azure.config;
+package com.netflix.kayenta.google.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.azure.storage.BlobsStorageService;
+import com.netflix.kayenta.google.storage.GcsStorageService;
 import com.netflix.kayenta.index.CanaryConfigIndex;
+import com.netflix.kayenta.security.AccountCredentialsRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties
-@ConditionalOnProperty("kayenta.blobs.enabled")
-@ComponentScan({"com.netflix.kayenta.blobs"})
+@ConditionalOnProperty("kayenta.gcs.enabled")
+@ComponentScan({"com.netflix.kayenta.gcs"})
 @Slf4j
-public class BlobsConfiguration {
+public class GcsConfiguration {
 
   @Bean
-  public BlobsStorageService blobsStorageService(
-      CanaryConfigIndex canaryConfigIndex, ObjectMapper kayentaObjectMapper) {
-    return new BlobsStorageService(kayentaObjectMapper, canaryConfigIndex);
+  public GcsStorageService gcsStorageService(
+      ObjectMapper kayentaObjectMapper,
+      AccountCredentialsRepository accountCredentialsRepository,
+      CanaryConfigIndex canaryConfigIndex) {
+    return new GcsStorageService(
+        kayentaObjectMapper, accountCredentialsRepository, canaryConfigIndex);
   }
 }

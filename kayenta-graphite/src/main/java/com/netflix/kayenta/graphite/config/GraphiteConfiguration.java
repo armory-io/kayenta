@@ -18,8 +18,6 @@ package com.netflix.kayenta.graphite.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.graphite.metrics.GraphiteMetricsService;
-import com.netflix.kayenta.graphite.security.GraphiteCredentials;
-import com.netflix.kayenta.graphite.security.GraphiteNamedAccountCredentials;
 import com.netflix.kayenta.graphite.service.GraphiteRemoteService;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
@@ -63,41 +61,27 @@ public class GraphiteConfiguration {
       OkHttpClient okHttpClient,
       AccountCredentialsRepository accountCredentialsRepository)
       throws IOException {
-    GraphiteMetricsService.GraphiteMetricsServiceBuilder graphiteMetricsServiceBuilder =
-        GraphiteMetricsService.builder();
 
     for (GraphiteManagedAccount account : graphiteConfigurationProperties.getAccounts()) {
-      String accountName = account.getName();
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
 
-      GraphiteCredentials credentials = GraphiteCredentials.builder().build();
-
-      GraphiteNamedAccountCredentials.GraphiteNamedAccountCredentialsBuilder
-          accountCredentialsBuilder =
-              GraphiteNamedAccountCredentials.builder()
-                  .name(accountName)
-                  .endpoint(account.getEndpoint())
-                  .credentials(credentials);
       if (!CollectionUtils.isEmpty(supportedTypes)) {
         if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          accountCredentialsBuilder.graphiteRemoteService(
+          account.setGraphiteRemoteService(
               retrofitClientFactory.createClient(
                   GraphiteRemoteService.class,
                   new JacksonConverter(objectMapper),
-                  account.getEndpoint(),
+                  account.getBaseUrl(),
                   okHttpClient));
         }
-
-        accountCredentialsBuilder.supportedTypes(supportedTypes);
       }
 
-      accountCredentialsRepository.save(accountName, accountCredentialsBuilder.build());
-      graphiteMetricsServiceBuilder.accountName(accountName);
+      accountCredentialsRepository.save(account);
     }
 
     log.info(
         "Populated GraphiteMetricsService with {} Graphite accounts.",
         graphiteConfigurationProperties.getAccounts().size());
-    return graphiteMetricsServiceBuilder.build();
+    return new GraphiteMetricsService(accountCredentialsRepository);
   }
 }

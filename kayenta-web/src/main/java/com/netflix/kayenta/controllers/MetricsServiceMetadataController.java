@@ -20,6 +20,9 @@ import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import io.swagger.annotations.ApiOperation;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +30,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/metadata/metricsService")
@@ -40,7 +39,8 @@ public class MetricsServiceMetadataController {
   private final AccountCredentialsRepository accountCredentialsRepository;
 
   @Autowired
-  public MetricsServiceMetadataController(AccountCredentialsRepository accountCredentialsRepository ) {
+  public MetricsServiceMetadataController(
+      AccountCredentialsRepository accountCredentialsRepository) {
     this.accountCredentialsRepository = accountCredentialsRepository;
   }
 
@@ -50,21 +50,23 @@ public class MetricsServiceMetadataController {
       @RequestParam(required = false) final String metricsAccountName,
       @RequestParam(required = false) final String filter)
       throws IOException {
-    AccountCredentials accountCredentials = accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE);
-    MetricsService metricsService = accountCredentials.getServiceForType(AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials accountCredentials =
+        accountCredentialsRepository.getRequiredOneBy(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    MetricsService metricsService =
+        accountCredentials.getServiceForType(AccountCredentials.Type.METRICS_STORE);
     List<Map> matchingDescriptors = metricsService.getMetadata(accountCredentials, filter);
 
     if (StringUtils.isEmpty(filter)) {
       log.debug(
           "Returned all {} descriptors via account {}.",
           matchingDescriptors.size(),
-              accountCredentials.getName());
+          accountCredentials.getName());
     } else {
       log.debug(
           "Matched {} descriptors via account {} using filter '{}'.",
           matchingDescriptors.size(),
-              accountCredentials.getName(),
+          accountCredentials.getName(),
           filter);
     }
 

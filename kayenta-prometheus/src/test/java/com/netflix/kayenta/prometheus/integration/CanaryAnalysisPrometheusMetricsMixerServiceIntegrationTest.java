@@ -90,7 +90,7 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
     String controlQuery = "avg(requests{version=\"baseline\",http_code=\"500\"})";
     doReturn(controlQuery)
         .when(prometheusMetricsService)
-        .buildQuery(ACCOUNT_NAME, canaryConfig, canaryMetricConfig, controlScope);
+        .buildQuery(credentials, canaryConfig, canaryMetricConfig, controlScope);
 
     String controlPrometheusResponse =
         "{\"status\":\"success\",\"data\":{\"resultType\":\"matrix\",\"result\":[{\"metric\":{},\"values\":[[1554982493.349,\"45\"],[1554982553.349,\"120\"]]}]}}";
@@ -104,7 +104,7 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
 
     List<MetricSet> controlMetricSet =
         prometheusMetricsService.queryMetrics(
-            ACCOUNT_NAME, canaryConfig, canaryMetricConfig, controlScope);
+            credentials, canaryConfig, canaryMetricConfig, controlScope);
 
     // HTTP GET http://prometheus-k8s.monitoring.svc.cluster.local:9090/api/v1/query_range
     // ?query=avg(requests{version="canary",http_code="500"})
@@ -120,7 +120,7 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
     String experimentQuery = "avg(requests{version=\"canary\",http_code=\"500\"})";
     doReturn(experimentQuery)
         .when(prometheusMetricsService)
-        .buildQuery(ACCOUNT_NAME, canaryConfig, canaryMetricConfig, experimentScope);
+        .buildQuery(credentials, canaryConfig, canaryMetricConfig, experimentScope);
 
     String experimentPrometheusResponse =
         "{\"status\":\"success\",\"data\":{\"resultType\":\"matrix\",\"result\":[{\"metric\":{},\"values\":[[1554982493.349,\"124\"],[1554982553.349,\"288\"]]}]}}";
@@ -135,7 +135,7 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
 
     List<MetricSet> experimentMetricSet =
         prometheusMetricsService.queryMetrics(
-            ACCOUNT_NAME, canaryConfig, canaryMetricConfig, experimentScope);
+            credentials, canaryConfig, canaryMetricConfig, experimentScope);
 
     // metrics set mixer
     List<MetricSetPair> metricSetPairList =

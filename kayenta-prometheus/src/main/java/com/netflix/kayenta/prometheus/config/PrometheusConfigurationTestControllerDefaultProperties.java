@@ -18,10 +18,14 @@ package com.netflix.kayenta.prometheus.config;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 /**
  * This configuration class allows you to specify default values for the PrometheusFetchController.
  */
+@ConfigurationProperties("kayenta.prometheus.test-controller-defaults")
+@Component
 public class PrometheusConfigurationTestControllerDefaultProperties {
 
   @Getter @Setter private String project;

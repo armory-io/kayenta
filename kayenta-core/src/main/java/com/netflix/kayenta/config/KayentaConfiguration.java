@@ -16,6 +16,9 @@
 
 package com.netflix.kayenta.config;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -27,7 +30,9 @@ import com.netflix.kayenta.metrics.MetricsRetryConfigurationProperties;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.service.MetricSetPairListService;
+import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.kork.jackson.ObjectMapperSubtypeConfigurer;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -37,11 +42,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-
-import java.util.List;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 
 @Configuration
 @Slf4j
@@ -61,6 +61,7 @@ public class KayentaConfiguration {
   @Bean
   @ConditionalOnMissingBean(AccountCredentialsRepository.class)
   AccountCredentialsRepository accountCredentialsRepository() {
+    return new MapBackedAccountCredentialsRepository();
   }
 
   @Bean
@@ -69,13 +70,12 @@ public class KayentaConfiguration {
     return new MetricSetMixerService();
   }
 
-
-
   @Bean
   @ConditionalOnMissingBean
   MetricSetPairListService metricSetPairListService(
-      AccountCredentialsRepository accountCredentialsRepository) {
-    return new MetricSetPairListService(accountCredentialsRepository);
+      AccountCredentialsRepository credentialsRepositoryRepository,
+      StorageServiceRepository storageServiceRepository) {
+    return new MetricSetPairListService(credentialsRepositoryRepository, storageServiceRepository);
   }
 
   //

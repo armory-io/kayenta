@@ -101,14 +101,11 @@ public class GraphiteFetchController {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials storageCredentials =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     GraphiteCanaryMetricSetQueryConfig.GraphiteCanaryMetricSetQueryConfigBuilder
         graphiteCanaryMetricSetQueryConfigBuilder = GraphiteCanaryMetricSetQueryConfig.builder();
@@ -126,12 +123,6 @@ public class GraphiteFetchController {
             scope, location, Instant.parse(start), Instant.parse(end), null, Collections.EMPTY_MAP);
 
     return synchronousQueryProcessor.processQueryAndReturnMap(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
-        null,
-        canaryMetricConfig,
-        0,
-        canaryScope,
-        dryRun);
+        metricsAccount, storageCredentials, null, canaryMetricConfig, 0, canaryScope, dryRun);
   }
 }

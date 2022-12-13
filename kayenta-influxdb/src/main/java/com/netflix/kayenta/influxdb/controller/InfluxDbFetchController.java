@@ -98,14 +98,11 @@ public class InfluxDbFetchController {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials metricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials storageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     InfluxdbCanaryMetricSetQueryConfig influxDbCanaryMetricSetQueryConfig =
         InfluxdbCanaryMetricSetQueryConfig.builder().metricName(metricName).fields(fields).build();
@@ -127,8 +124,8 @@ public class InfluxDbFetchController {
 
     String metricSetListId =
         synchronousQueryProcessor.executeQuery(
-            resolvedMetricsAccountName,
-            resolvedStorageAccountName,
+            metricsAccount,
+            storageAccount,
             CanaryConfig.builder().metric(canaryMetricConfig).build(),
             0,
             canaryScope);

@@ -26,11 +26,12 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
-import com.netflix.kayenta.aws.storage.S3StorageService;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -39,84 +40,83 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
 @Configuration
 @ConditionalOnProperty("kayenta.aws.enabled")
 @ComponentScan({"com.netflix.kayenta.aws"})
 @Slf4j
 public class AwsConfiguration {
 
-    @Bean
-    @ConfigurationProperties("kayenta.aws")
-    AwsConfigurationProperties awsConfigurationProperties() {
-        return new AwsConfigurationProperties();
-    }
+  @Bean
+  @ConfigurationProperties("kayenta.aws")
+  AwsConfigurationProperties awsConfigurationProperties() {
+    return new AwsConfigurationProperties();
+  }
 
-    @Bean
-    boolean registerAwsCredentials(S3StorageService storageService, AwsConfigurationProperties awsConfigurationProperties, AccountCredentialsRepository accountCredentialsRepository)
-            throws IOException {
-        for (AwsNamedAccountCredentials awsManagedAccount : awsConfigurationProperties.getAccounts()) {
-            String name = awsManagedAccount.getName();
-            List<AccountCredentials.Type> supportedTypes = awsManagedAccount.getSupportedTypes();
+  @Bean
+  boolean registerAwsCredentials(
+      AwsConfigurationProperties awsConfigurationProperties,
+      AccountCredentialsRepository accountCredentialsRepository)
+      throws IOException {
+    for (AwsNamedAccountCredentials awsManagedAccount : awsConfigurationProperties.getAccounts()) {
+      String name = awsManagedAccount.getName();
+      List<AccountCredentials.Type> supportedTypes = awsManagedAccount.getSupportedTypes();
 
-            log.info("Registering AWS account {} with supported types {}.", name, supportedTypes);
+      log.info("Registering AWS account {} with supported types {}.", name, supportedTypes);
 
+      AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard();
+      String profileName = awsManagedAccount.getProfileName();
 
-            AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard();
-            String profileName = awsManagedAccount.getProfileName();
+      if (!StringUtils.isEmpty(profileName)) {
+        amazonS3ClientBuilder.withCredentials(new ProfileCredentialsProvider(profileName));
+      }
 
-            if (!StringUtils.isEmpty(profileName)) {
-                amazonS3ClientBuilder.withCredentials(new ProfileCredentialsProvider(profileName));
-            }
+      AwsNamedAccountCredentials.ExplicitAwsCredentials explicitCredentials =
+          awsManagedAccount.getExplicitCredentials();
+      if (explicitCredentials != null) {
+        String sessionToken = explicitCredentials.getSessionToken();
+        AWSCredentials awsCreds =
+            (sessionToken == null)
+                ? new BasicAWSCredentials(
+                    explicitCredentials.getAccessKey(), explicitCredentials.getSecretKey())
+                : new BasicSessionCredentials(
+                    explicitCredentials.getAccessKey(),
+                    explicitCredentials.getSecretKey(),
+                    sessionToken);
+        amazonS3ClientBuilder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
+      }
 
-            AwsNamedAccountCredentials.ExplicitAwsCredentials explicitCredentials = awsManagedAccount.getExplicitCredentials();
-            if (explicitCredentials != null) {
-                String sessionToken = explicitCredentials.getSessionToken();
-                AWSCredentials awsCreds =
-                        (sessionToken == null)
-                                ? new BasicAWSCredentials(
-                                explicitCredentials.getAccessKey(), explicitCredentials.getSecretKey())
-                                : new BasicSessionCredentials(
-                                explicitCredentials.getAccessKey(),
-                                explicitCredentials.getSecretKey(),
-                                sessionToken);
-                amazonS3ClientBuilder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
-            }
+      String endpoint = awsManagedAccount.getEndpoint();
 
-            String endpoint = awsManagedAccount.getEndpoint();
+      if (!StringUtils.hasText(endpoint)) {
+        amazonS3ClientBuilder.setEndpointConfiguration(
+            new AwsClientBuilder.EndpointConfiguration(endpoint, null));
+        amazonS3ClientBuilder.setPathStyleAccessEnabled(true);
+      } else {
+        Optional.ofNullable(awsManagedAccount.getRegion())
+            .ifPresent(amazonS3ClientBuilder::setRegion);
+      }
 
-            if (!StringUtils.hasText(endpoint)) {
-                amazonS3ClientBuilder.setEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, null));
-                amazonS3ClientBuilder.setPathStyleAccessEnabled(true);
-            } else {
-                Optional.ofNullable(awsManagedAccount.getRegion()).ifPresent(amazonS3ClientBuilder::setRegion);
-            }
-
-            ClientConfiguration clientConfiguration = new ClientConfiguration();
-            if (awsManagedAccount.getProxyProtocol() != null) {
-                if (awsManagedAccount.getProxyProtocol().equalsIgnoreCase("HTTPS")) {
-                    clientConfiguration.setProtocol(Protocol.HTTPS);
-                } else {
-                    clientConfiguration.setProtocol(Protocol.HTTP);
-                }
-                Optional.ofNullable(awsManagedAccount.getProxyHost())
-                        .ifPresent(clientConfiguration::setProxyHost);
-                Optional.ofNullable(awsManagedAccount.getProxyPort())
-                        .map(Integer::parseInt)
-                        .ifPresent(clientConfiguration::setProxyPort);
-                amazonS3ClientBuilder.withClientConfiguration(clientConfiguration);
-            }
-
-            AmazonS3 amazonS3 = amazonS3ClientBuilder.build();
-            awsManagedAccount.setCredentials(amazonS3);
-            awsManagedAccount.setSupportingService(storageService);
-
-            accountCredentialsRepository.save(awsManagedAccount);
+      ClientConfiguration clientConfiguration = new ClientConfiguration();
+      if (awsManagedAccount.getProxyProtocol() != null) {
+        if (awsManagedAccount.getProxyProtocol().equalsIgnoreCase("HTTPS")) {
+          clientConfiguration.setProtocol(Protocol.HTTPS);
+        } else {
+          clientConfiguration.setProtocol(Protocol.HTTP);
         }
+        Optional.ofNullable(awsManagedAccount.getProxyHost())
+            .ifPresent(clientConfiguration::setProxyHost);
+        Optional.ofNullable(awsManagedAccount.getProxyPort())
+            .map(Integer::parseInt)
+            .ifPresent(clientConfiguration::setProxyPort);
+        amazonS3ClientBuilder.withClientConfiguration(clientConfiguration);
+      }
 
-        return true;
+      AmazonS3 amazonS3 = amazonS3ClientBuilder.build();
+      awsManagedAccount.setCredentials(amazonS3);
+
+      accountCredentialsRepository.save(awsManagedAccount);
     }
+
+    return true;
+  }
 }

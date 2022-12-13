@@ -16,6 +16,8 @@
 
 package com.netflix.kayenta.prometheus.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.Collections;
@@ -26,7 +28,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Data
-public class PrometheusManagedAccount {
+public class PrometheusManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
 
@@ -47,4 +49,12 @@ public class PrometheusManagedAccount {
 
   // Optional parameter for use when protecting prometheus with bearer token.
   private String bearerToken;
+
+  @Override
+  public String getType() {
+    return "prometheus";
+  }
+  // The prometheus server location.
+
+  @JsonIgnore PrometheusRemoteService prometheusRemoteService;
 }

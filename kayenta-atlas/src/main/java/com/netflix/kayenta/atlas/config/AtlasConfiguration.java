@@ -21,12 +21,8 @@ import com.netflix.kayenta.atlas.backends.AtlasStorageUpdaterService;
 import com.netflix.kayenta.atlas.backends.BackendUpdater;
 import com.netflix.kayenta.atlas.backends.BackendUpdaterService;
 import com.netflix.kayenta.atlas.metrics.AtlasMetricsService;
-import com.netflix.kayenta.atlas.security.AtlasCredentials;
-import com.netflix.kayenta.atlas.security.AtlasNamedAccountCredentials;
 import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,7 +30,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.CollectionUtils;
 
 @Configuration
 @ConditionalOnProperty("kayenta.atlas.enabled")
@@ -63,49 +58,25 @@ public class AtlasConfiguration {
   MetricsService atlasMetricsService(
       AtlasConfigurationProperties atlasConfigurationProperties,
       AccountCredentialsRepository accountCredentialsRepository) {
-    AtlasMetricsService.AtlasMetricsServiceBuilder atlasMetricsServiceBuilder =
-        AtlasMetricsService.builder();
+    AtlasMetricsService atlasMetricsService = AtlasMetricsService.builder().build();
 
     for (AtlasManagedAccount atlasManagedAccount : atlasConfigurationProperties.getAccounts()) {
       String name = atlasManagedAccount.getName();
-      List<AccountCredentials.Type> supportedTypes = atlasManagedAccount.getSupportedTypes();
-      String backendsJsonUriPrefix = atlasManagedAccount.getBackendsJsonBaseUrl();
-
-      log.info("Registering Atlas account {} with supported types {}.", name, supportedTypes);
-
-      AtlasCredentials atlasCredentials = AtlasCredentials.builder().build();
-
-      BackendUpdater backendUpdater = BackendUpdater.builder().uri(backendsJsonUriPrefix).build();
+      log.info(
+          "Registering Atlas account {} with supported types {}.",
+          name,
+          atlasManagedAccount.getSupportedTypes());
+      BackendUpdater backendUpdater =
+          BackendUpdater.builder().uri(atlasManagedAccount.getBackendsJsonBaseUrl()).build();
       AtlasStorageUpdater atlasStorageUpdater =
-          AtlasStorageUpdater.builder().uri(backendsJsonUriPrefix).build();
-      AtlasNamedAccountCredentials.AtlasNamedAccountCredentialsBuilder
-          atlasNamedAccountCredentialsBuilder =
-              AtlasNamedAccountCredentials.builder()
-                  .name(name)
-                  .credentials(atlasCredentials)
-                  .fetchId(atlasManagedAccount.getFetchId())
-                  .recommendedLocations(atlasManagedAccount.getRecommendedLocations())
-                  .atlasStorageUpdater(atlasStorageUpdater)
-                  .backendUpdater(backendUpdater);
+          AtlasStorageUpdater.builder().uri(atlasManagedAccount.getBackendsJsonBaseUrl()).build();
+      atlasManagedAccount.setBackendUpdater(backendUpdater);
+      atlasManagedAccount.setAtlasStorageUpdater(atlasStorageUpdater);
+      backendUpdaterService.add(backendUpdater);
+      atlasStorageUpdaterService.add(atlasStorageUpdater);
 
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        atlasNamedAccountCredentialsBuilder.supportedTypes(supportedTypes);
-      }
-
-      AtlasNamedAccountCredentials atlasNamedAccountCredentials =
-          atlasNamedAccountCredentialsBuilder.build();
-      accountCredentialsRepository.save(name, atlasNamedAccountCredentials);
-      atlasMetricsServiceBuilder.accountName(name);
-
-      backendUpdaterService.add(atlasNamedAccountCredentials.getBackendUpdater());
-      atlasStorageUpdaterService.add(atlasNamedAccountCredentials.getAtlasStorageUpdater());
+      accountCredentialsRepository.save(atlasManagedAccount);
     }
-
-    AtlasMetricsService atlasMetricsService = atlasMetricsServiceBuilder.build();
-
-    log.info(
-        "Populated AtlasMetricsService with {} Atlas accounts.",
-        atlasMetricsService.getAccountNames().size());
 
     return atlasMetricsService;
   }

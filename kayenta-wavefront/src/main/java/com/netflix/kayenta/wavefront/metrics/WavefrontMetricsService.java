@@ -28,10 +28,6 @@ import com.netflix.kayenta.wavefront.security.WavefrontNamedAccountCredentials;
 import com.netflix.kayenta.wavefront.service.WavefrontRemoteService;
 import com.netflix.kayenta.wavefront.service.WavefrontTimeSeries;
 import com.netflix.spectator.api.Registry;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,11 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Builder
 @Slf4j
 public class WavefrontMetricsService implements MetricsService<WavefrontNamedAccountCredentials> {
-
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -56,7 +54,7 @@ public class WavefrontMetricsService implements MetricsService<WavefrontNamedAcc
 
   @Override
   public String buildQuery(
-          WavefrontNamedAccountCredentials accountCredentials,
+      WavefrontNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -78,7 +76,7 @@ public class WavefrontMetricsService implements MetricsService<WavefrontNamedAcc
 
   @Override
   public List<MetricSet> queryMetrics(
-          WavefrontNamedAccountCredentials accountCredentials,
+      WavefrontNamedAccountCredentials accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)

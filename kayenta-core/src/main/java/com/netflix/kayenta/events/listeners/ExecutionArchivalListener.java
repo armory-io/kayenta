@@ -42,7 +42,7 @@ public class ExecutionArchivalListener {
       AccountCredentialsRepository accountCredentialsRepository,
       StorageServiceRepository storageServiceRepository) {
     this.accountCredentialsRepository = Objects.requireNonNull(accountCredentialsRepository);
-    this.storageServiceRepository = Objects.requireNonNull(storageServiceRepository);
+    this.storageServiceRepository = storageServiceRepository;
     log.info("Loaded ExecutionArchivalListener");
   }
 
@@ -51,18 +51,17 @@ public class ExecutionArchivalListener {
     var response = event.getCanaryExecutionStatusResponse();
     var storageAccountName = response.getStorageAccountName();
     if (storageAccountName != null) {
-      var resolvedStorageAccountName =
-          accountCredentialsRepository
-              .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-              .getName();
+      var resolvedStorageAccount =
+          accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+              storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
-      var storageService = storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
-
-      storageService.storeObject(
-          resolvedStorageAccountName,
-          ObjectType.CANARY_RESULT_ARCHIVE,
-          response.getPipelineId(),
-          response);
+      storageServiceRepository
+          .getRequiredOne(resolvedStorageAccount)
+          .storeObject(
+              resolvedStorageAccount,
+              ObjectType.CANARY_RESULT_ARCHIVE,
+              response.getPipelineId(),
+              response);
     }
   }
 }

@@ -19,17 +19,15 @@ package com.netflix.kayenta.newrelic.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.newrelic.metrics.NewRelicMetricsService;
-import com.netflix.kayenta.newrelic.security.NewRelicCredentials;
-import com.netflix.kayenta.newrelic.security.NewRelicNamedAccountCredentials;
+import com.netflix.kayenta.newrelic.metrics.NewRelicQueryBuilderService;
 import com.netflix.kayenta.newrelic.service.NewRelicRemoteService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.squareup.okhttp.OkHttpClient;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -82,54 +80,38 @@ public class NewRelicConfiguration {
                         .build()));
   }
 
-  @Bean
-  MetricsService newrelicMetricsService(
-      NewRelicConfigurationProperties newrelicConfigurationProperties,
+  @PostConstruct
+  public void initializeAccounts(
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient,
-      AccountCredentialsRepository accountCredentialsRepository) {
+      AccountCredentialsRepository accountCredentialsRepository,
+      NewRelicConfigurationProperties newRelicConfigurationProperties) {
 
-    NewRelicMetricsService.NewRelicMetricsServiceBuilder metricsServiceBuilder =
-        NewRelicMetricsService.builder();
+    for (NewRelicManagedAccount account : newRelicConfigurationProperties.getAccounts()) {
 
-    for (NewRelicManagedAccount account : newrelicConfigurationProperties.getAccounts()) {
-      String name = account.getName();
-      List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
-
-      NewRelicCredentials credentials =
-          NewRelicCredentials.builder()
-              .apiKey(account.getApiKey())
-              .applicationKey(account.getApplicationKey())
-              .build();
-
-      RemoteService endpoint = account.getEndpoint();
-
-      if (endpoint == null) {
-        endpoint = new RemoteService().setBaseUrl("https://insights-api.newrelic.com");
+      if (account.getBaseUrl() == null) {
+        account.setBaseUrl("https://insights-api.newrelic.com");
       }
 
-      NewRelicNamedAccountCredentials.NewRelicNamedAccountCredentialsBuilder
-          accountCredentialsBuilder =
-              NewRelicNamedAccountCredentials.builder()
-                  .name(name)
-                  .endpoint(endpoint)
-                  .credentials(credentials);
-
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          accountCredentialsBuilder.newRelicRemoteService(
-              retrofitClientFactory.createClient(
-                  NewRelicRemoteService.class,
-                  new JacksonConverter(objectMapper),
-                  endpoint,
-                  okHttpClient));
-        }
-        accountCredentialsBuilder.supportedTypes(supportedTypes);
+      if (!CollectionUtils.isEmpty(account.getSupportedTypes())
+          && account.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE)) {
+        account.setNewRelicRemoteService(
+            retrofitClientFactory.createClient(
+                NewRelicRemoteService.class,
+                new JacksonConverter(objectMapper),
+                account.getBaseUrl(),
+                okHttpClient));
       }
 
-      accountCredentialsRepository.save(accountCredentialsBuilder.build());
+      accountCredentialsRepository.save(account);
     }
+  }
+
+  @Bean
+  MetricsService newrelicMetricsService(
+      Map<String, NewRelicScopeConfiguration> newrelicScopeConfigurationMap,
+      NewRelicConfigurationProperties newrelicConfigurationProperties) {
 
     log.info(
         "Configured the New Relic Metrics Service with the following accounts: {}",
@@ -137,6 +119,7 @@ public class NewRelicConfiguration {
             .map(NewRelicManagedAccount::getName)
             .collect(Collectors.joining(",")));
 
-    return metricsServiceBuilder.build();
+    return new NewRelicMetricsService(
+        newrelicScopeConfigurationMap, new NewRelicQueryBuilderService());
   }
 }

@@ -23,7 +23,6 @@ import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import com.netflix.kayenta.index.CanaryConfigIndex;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -35,11 +34,8 @@ public class TestableBlobsStorageService extends BlobsStorageService {
   public HashMap<String, String> blobStored = new HashMap<>();
 
   TestableBlobsStorageService(
-      List<String> accountNames,
-      ObjectMapper kayentaObjectMapper,
-      AccountCredentialsRepository accountCredentialsRepository,
-      CanaryConfigIndex canaryConfigIndex) {
-    super(accountNames, kayentaObjectMapper, accountCredentialsRepository, canaryConfigIndex);
+      ObjectMapper kayentaObjectMapper, CanaryConfigIndex canaryConfigIndex) {
+    super(kayentaObjectMapper, canaryConfigIndex);
   }
 
   @Override

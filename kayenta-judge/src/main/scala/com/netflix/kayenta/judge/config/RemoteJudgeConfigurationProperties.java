@@ -19,11 +19,25 @@ package com.netflix.kayenta.judge.config;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.validation.annotation.Validated;
 
 @Data
 @Validated
 public class RemoteJudgeConfigurationProperties {
 
-  @NotNull private RemoteService endpoint;
+  @NotNull @Getter @Setter private String baseUrl;
+  @Deprecated @NotNull private RemoteService endpoint;
+
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  @Deprecated
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    // NOMINALLY this is replaced by setBaseUrl in the future...
+    this.baseUrl = endpoint.getBaseUrl();
+  }
 }

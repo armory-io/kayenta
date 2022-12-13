@@ -1,7 +1,7 @@
 /*
- * Copyright 2017 Google, Inc.
+ * Copyright 2022 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License")
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.gcs.storage;
+package com.netflix.kayenta.google.storage;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,7 +28,7 @@ import com.google.api.services.storage.model.StorageObject;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.netflix.kayenta.canary.CanaryConfig;
-import com.netflix.kayenta.google.security.GoogleNamedAccountCredentials;
+import com.netflix.kayenta.google.config.GoogleManagedAccount;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
 import com.netflix.kayenta.security.AccountCredentials;
@@ -40,30 +40,25 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
-import javax.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class GcsStorageService implements StorageService {
+@AllArgsConstructor
+public class GcsStorageService implements StorageService<GoogleManagedAccount> {
 
   @Autowired private ObjectMapper kayentaObjectMapper;
-
 
   @Autowired private AccountCredentialsRepository accountCredentialsRepository;
 
   @Autowired private CanaryConfigIndex canaryConfigIndex;
 
-
   /** Check to see if the bucket exists, creating it if it is not there. */
-  public void ensureBucketExists(String accountName) {
-    GoogleNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+  public void ensureBucketExists(GoogleManagedAccount credentials) {
     Storage storage = credentials.getStorage();
     String projectName = credentials.getProject();
     String bucketName = credentials.getBucket();
@@ -107,10 +102,8 @@ public class GcsStorageService implements StorageService {
   }
 
   @Override
-  public <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
+  public <T> T loadObject(GoogleManagedAccount credentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException {
-    GoogleNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
     Storage storage = credentials.getStorage();
     String bucketName = credentials.getBucket();
     StorageObject item;
@@ -144,7 +137,7 @@ public class GcsStorageService implements StorageService {
   private StorageObject resolveSingularItem(
       ObjectType objectType,
       String objectKey,
-      GoogleNamedAccountCredentials credentials,
+      GoogleManagedAccount credentials,
       Storage storage,
       String bucketName) {
     String rootFolder = daoRoot(credentials, objectType.getGroup()) + "/" + objectKey;
@@ -184,19 +177,17 @@ public class GcsStorageService implements StorageService {
 
   @Override
   public <T> void storeObject(
-      String accountName,
+      GoogleManagedAccount credentials,
       ObjectType objectType,
       String objectKey,
       T obj,
       String filename,
       boolean isAnUpdate) {
-    GoogleNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
     Storage storage = credentials.getStorage();
     String bucketName = credentials.getBucket();
     String path = keyToPath(credentials, objectType, objectKey, filename);
 
-    ensureBucketExists(accountName);
+    ensureBucketExists(credentials);
 
     long updatedTimestamp = -1;
     String correlationId = null;
@@ -275,7 +266,7 @@ public class GcsStorageService implements StorageService {
   }
 
   private void checkForDuplicateCanaryConfig(
-      CanaryConfig canaryConfig, String canaryConfigId, GoogleNamedAccountCredentials credentials) {
+      CanaryConfig canaryConfig, String canaryConfigId, GoogleManagedAccount credentials) {
     String canaryConfigName = canaryConfig.getName();
     List<String> applications = canaryConfig.getApplications();
     String existingCanaryConfigId =
@@ -295,9 +286,8 @@ public class GcsStorageService implements StorageService {
   }
 
   @Override
-  public void deleteObject(String accountName, ObjectType objectType, String objectKey) {
-    GoogleNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+  public void deleteObject(
+      GoogleManagedAccount credentials, ObjectType objectType, String objectKey) {
     Storage storage = credentials.getStorage();
     String bucketName = credentials.getBucket();
     StorageObject item =
@@ -389,9 +379,10 @@ public class GcsStorageService implements StorageService {
 
   @Override
   public List<Map<String, Object>> listObjectKeys(
-      String accountName, ObjectType objectType, List<String> applications, boolean skipIndex) {
-    GoogleNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+      GoogleManagedAccount credentials,
+      ObjectType objectType,
+      List<String> applications,
+      boolean skipIndex) {
 
     if (!skipIndex && objectType == ObjectType.CANARY_CONFIG) {
       Set<Map<String, Object>> canaryConfigSet =
@@ -403,7 +394,7 @@ public class GcsStorageService implements StorageService {
       String bucketName = credentials.getBucket();
       String rootFolder = daoRoot(credentials, objectType.getGroup());
 
-      ensureBucketExists(accountName);
+      ensureBucketExists(credentials);
 
       int skipToOffset = rootFolder.length() + 1; // + Trailing slash
       List<Map<String, Object>> result = new ArrayList<>();
@@ -454,15 +445,21 @@ public class GcsStorageService implements StorageService {
     }
   }
 
-  private String daoRoot(GoogleNamedAccountCredentials credentials, String daoTypeName) {
+  @Override
+  public boolean appliesTo(AccountCredentials credentials) {
+    return credentials instanceof GoogleManagedAccount
+        && (credentials.getSupportedTypes().contains(AccountCredentials.Type.OBJECT_STORE)
+            || credentials
+                .getSupportedTypes()
+                .contains(AccountCredentials.Type.CONFIGURATION_STORE));
+  }
+
+  private String daoRoot(GoogleManagedAccount credentials, String daoTypeName) {
     return credentials.getRootFolder() + '/' + daoTypeName;
   }
 
   private String keyToPath(
-      GoogleNamedAccountCredentials credentials,
-      ObjectType objectType,
-      String objectKey,
-      String filename) {
+      GoogleManagedAccount credentials, ObjectType objectType, String objectKey, String filename) {
     if (filename == null) {
       filename = objectType.getDefaultFilename();
     }

@@ -87,18 +87,16 @@ public class AtlasFetchTask implements RetryableTask {
       log.error("Unable to parse JSON scope: " + scopeJson, e);
       throw new RuntimeException(e);
     }
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     return synchronousQueryProcessor.executeQueryAndProduceTaskResult(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        resolvedMetricsAccount,
+        resolvedStorageAccount,
         canaryConfig,
         metricIndex,
         atlasCanaryScope);

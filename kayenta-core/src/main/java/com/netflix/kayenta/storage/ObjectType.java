@@ -23,29 +23,33 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricSetPair;
 import java.util.List;
 
-public interface ObjectType {
+public enum ObjectType {
+  CANARY_CONFIG(new TypeReference<CanaryConfig>() {}, "canary_config", "canary_config.json"),
+  CANARY_RESULT_ARCHIVE(
+      new TypeReference<CanaryExecutionStatusResponse>() {}, "canary_config", "canary_config.json"),
+  METRIC_SET_PAIR_LIST(
+      new TypeReference<List<MetricSetPair>>() {}, "metric_pairs", "metric_set_pairs.json"),
+  METRIC_SET_LIST(new TypeReference<MetricSet>() {}, "metrics", "metric_sets.json");
 
-  ObjectType CANARY_CONFIG =
-      new StandardObjectType(
-          new TypeReference<CanaryConfig>() {}, "canary_config", "canary_config.json");
+  private final TypeReference<?> typeReference;
+  private final String defaultFilename;
+  private final String group;
 
-  ObjectType CANARY_RESULT_ARCHIVE =
-      new StandardObjectType(
-          new TypeReference<CanaryExecutionStatusResponse>() {},
-          "canary_archive",
-          "canary_archive.json");
+  ObjectType(TypeReference<?> typeReference, String group, String defaultFilename) {
+    this.typeReference = typeReference;
+    this.group = group;
+    this.defaultFilename = defaultFilename;
+  }
 
-  ObjectType METRIC_SET_LIST =
-      new StandardObjectType(
-          new TypeReference<List<MetricSet>>() {}, "metrics", "metric_sets.json");
+  public String getDefaultFilename() {
+    return defaultFilename;
+  }
 
-  ObjectType METRIC_SET_PAIR_LIST =
-      new StandardObjectType(
-          new TypeReference<List<MetricSetPair>>() {}, "metric_pairs", "metric_set_pairs.json");
+  public String getGroup() {
+    return group;
+  }
 
-  TypeReference<?> getTypeReference();
-
-  String getGroup();
-
-  String getDefaultFilename();
+  public TypeReference<?> getTypeReference() {
+    return typeReference;
+  }
 }

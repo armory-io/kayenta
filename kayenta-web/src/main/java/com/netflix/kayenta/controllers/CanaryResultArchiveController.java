@@ -61,11 +61,13 @@ public class CanaryResultArchiveController {
   public CanaryExecutionStatusResponse loadArchivedCanaryResult(
       @RequestParam(required = false) final String storageAccountName,
       @PathVariable String pipelineId) {
-    String resolvedConfigurationAccountName = resolveStorageAccountName(storageAccountName);
+    AccountCredentials resolvedConfigurationAccountName =
+        resolveStorageAccountName(storageAccountName);
     StorageService storageService = getStorageService(resolvedConfigurationAccountName);
 
-    return storageService.loadObject(
-        resolvedConfigurationAccountName, ObjectType.CANARY_RESULT_ARCHIVE, pipelineId);
+    return (CanaryExecutionStatusResponse)
+        storageService.loadObject(
+            resolvedConfigurationAccountName, ObjectType.CANARY_RESULT_ARCHIVE, pipelineId);
   }
 
   @ApiOperation(value = "Create an archived canary result to object storage")
@@ -75,7 +77,8 @@ public class CanaryResultArchiveController {
       @RequestParam(required = false) String pipelineId,
       @RequestBody CanaryExecutionStatusResponse canaryExecutionStatusResponse)
       throws IOException {
-    String resolvedConfigurationAccountName = resolveStorageAccountName(storageAccountName);
+    AccountCredentials resolvedConfigurationAccountName =
+        resolveStorageAccountName(storageAccountName);
     StorageService storageService = getStorageService(resolvedConfigurationAccountName);
 
     if (pipelineId == null) {
@@ -111,7 +114,8 @@ public class CanaryResultArchiveController {
       @PathVariable String pipelineId,
       @RequestBody CanaryExecutionStatusResponse canaryExecutionStatusResponse)
       throws IOException {
-    String resolvedConfigurationAccountName = resolveStorageAccountName(storageAccountName);
+    AccountCredentials resolvedConfigurationAccountName =
+        resolveStorageAccountName(storageAccountName);
     StorageService storageService = getStorageService(resolvedConfigurationAccountName);
 
     try {
@@ -139,7 +143,8 @@ public class CanaryResultArchiveController {
       @RequestParam(required = false) final String storageAccountName,
       @PathVariable String pipelineId,
       HttpServletResponse response) {
-    String resolvedConfigurationAccountName = resolveStorageAccountName(storageAccountName);
+    AccountCredentials resolvedConfigurationAccountName =
+        resolveStorageAccountName(storageAccountName);
     StorageService storageService = getStorageService(resolvedConfigurationAccountName);
 
     storageService.deleteObject(
@@ -152,20 +157,20 @@ public class CanaryResultArchiveController {
   @RequestMapping(method = RequestMethod.GET)
   public List<Map<String, Object>> listAllCanaryArchivedResults(
       @RequestParam(required = false) final String storageAccountName) {
-    String resolvedConfigurationAccountName = resolveStorageAccountName(storageAccountName);
+    AccountCredentials resolvedConfigurationAccountName =
+        resolveStorageAccountName(storageAccountName);
     StorageService storageService = getStorageService(resolvedConfigurationAccountName);
 
     return storageService.listObjectKeys(
         resolvedConfigurationAccountName, ObjectType.CANARY_RESULT_ARCHIVE);
   }
 
-  private String resolveStorageAccountName(String storageAccountName) {
-    return accountCredentialsRepository
-        .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-        .getName();
+  private AccountCredentials resolveStorageAccountName(String storageAccountName) {
+    return accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+        storageAccountName, AccountCredentials.Type.OBJECT_STORE);
   }
 
-  private StorageService getStorageService(String resolvedStorageAccountName) {
+  private StorageService getStorageService(AccountCredentials resolvedStorageAccountName) {
     return storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
   }
 }

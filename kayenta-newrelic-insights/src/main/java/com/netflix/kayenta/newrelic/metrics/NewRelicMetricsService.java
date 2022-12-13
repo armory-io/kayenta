@@ -23,13 +23,11 @@ import com.netflix.kayenta.canary.providers.metrics.NewRelicCanaryMetricSetQuery
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.newrelic.canary.NewRelicCanaryScope;
+import com.netflix.kayenta.newrelic.config.NewRelicManagedAccount;
 import com.netflix.kayenta.newrelic.config.NewRelicScopeConfiguration;
-import com.netflix.kayenta.newrelic.security.NewRelicCredentials;
-import com.netflix.kayenta.newrelic.security.NewRelicNamedAccountCredentials;
 import com.netflix.kayenta.newrelic.service.NewRelicRemoteService;
 import com.netflix.kayenta.newrelic.service.NewRelicTimeSeries;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.spectator.api.Registry;
+import com.netflix.kayenta.security.AccountCredentials;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,22 +35,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-@Builder
 @Slf4j
 @Component
-public class NewRelicMetricsService implements MetricsService<NewRelicNamedAccountCredentials>{
+@AllArgsConstructor
+public class NewRelicMetricsService implements MetricsService<NewRelicManagedAccount> {
 
   @Autowired private final Map<String, NewRelicScopeConfiguration> newrelicScopeConfigurationMap;
-
-  @Autowired private final Registry registry;
 
   @Autowired private final NewRelicQueryBuilderService queryBuilder;
 
@@ -63,7 +56,7 @@ public class NewRelicMetricsService implements MetricsService<NewRelicNamedAccou
 
   @Override
   public String buildQuery(
-          NewRelicNamedAccountCredentials accountCredentials,
+      NewRelicManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -82,20 +75,19 @@ public class NewRelicMetricsService implements MetricsService<NewRelicNamedAccou
 
   @Override
   public List<MetricSet> queryMetrics(
-          NewRelicNamedAccountCredentials accountCredentials,
+      NewRelicManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
 
-    NewRelicCredentials credentials = accountCredentials.getCredentials();
     NewRelicRemoteService remoteService = accountCredentials.getNewRelicRemoteService();
 
     String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     NewRelicTimeSeries timeSeries =
         remoteService.getTimeSeries(
-            credentials.getApiKey(), credentials.getApplicationKey(), query);
+            accountCredentials.getApiKey(), accountCredentials.getApplicationKey(), query);
 
     Instant begin = Instant.ofEpochMilli(timeSeries.getMetadata().getBeginTimeMillis());
     Instant end = Instant.ofEpochMilli(timeSeries.getMetadata().getEndTimeMillis());
@@ -116,6 +108,12 @@ public class NewRelicMetricsService implements MetricsService<NewRelicNamedAccou
             .values(timeSeries.getDataPoints().collect(Collectors.toList()))
             .attribute("query", query)
             .build());
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof NewRelicManagedAccount
+        && account.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE);
   }
 
   /**

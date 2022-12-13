@@ -54,6 +54,7 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
   private final ObjectMapper kayentaObjectMapper;
   private final CanaryConfigIndex canaryConfigIndex;
   private final IndexConfigurationProperties indexConfigurationProperties;
+  private final StorageServiceRepository storageServiceRepository;
 
   private int cyclesInitiated = 0;
   private int cyclesCompleted = 0;
@@ -62,6 +63,7 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
       String currentInstanceId,
       JedisPool jedisPool,
       AccountCredentialsRepository accountCredentialsRepository,
+      StorageServiceRepository storageServiceRepository,
       ObjectMapper kayentaObjectMapper,
       CanaryConfigIndex canaryConfigIndex,
       IndexConfigurationProperties indexConfigurationProperties) {
@@ -71,6 +73,7 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
     this.kayentaObjectMapper = kayentaObjectMapper;
     this.canaryConfigIndex = canaryConfigIndex;
     this.indexConfigurationProperties = indexConfigurationProperties;
+    this.storageServiceRepository = storageServiceRepository;
   }
 
   @Scheduled(fixedDelayString = "#{@indexConfigurationProperties.heartbeatIntervalMS}")
@@ -139,11 +142,12 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
             // an open start entry by recording the matching finish entry).
             List<String> updatesThroughCheckpoint = jedis.lrange(pendingUpdatesKey, 0, -1);
             StorageService configurationService =
-                storageServiceRepository.getRequiredOne(accountName);
+                storageServiceRepository.getRequiredOne(credentials);
 
             List<Map<String, Object>> canaryConfigObjectKeys =
                 configurationService.listObjectKeys(
-                    accountName, ObjectType.CANARY_CONFIG, null, true);
+                    credentials, ObjectType.CANARY_CONFIG, null, true);
+            log.info("Retrieved " + canaryConfigObjectKeys + " from config service");
             Map<String, List<Map>> applicationToCanaryConfigListMap = new HashMap<>();
 
             for (Map<String, Object> canaryConfigSummary : canaryConfigObjectKeys) {
@@ -160,8 +164,9 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
                 }
 
                 CanaryConfig canaryConfig =
-                    configurationService.loadObject(
-                        accountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+                    (CanaryConfig)
+                        configurationService.loadObject(
+                            credentials, ObjectType.CANARY_CONFIG, canaryConfigId);
                 List<String> applications = canaryConfig.getApplications();
 
                 for (String application : applications) {
@@ -230,6 +235,10 @@ public class CanaryConfigIndexingAgent extends AbstractHealthIndicator {
             // We do this so we can distinguish between a completely empty index and an
             // unavailable/missing index.
             if (!jedis.exists(mapByApplicationKey)) {
+              log.info(
+                  "No map by application key of "
+                      + mapByApplicationKey
+                      + " found, setting to a no index config sentinel value");
               jedis.hset(
                   mapByApplicationKey,
                   "not-a-real-application:" + currentInstanceId,

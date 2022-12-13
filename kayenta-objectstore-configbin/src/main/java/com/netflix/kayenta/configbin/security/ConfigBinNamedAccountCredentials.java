@@ -26,8 +26,7 @@ import lombok.*;
 
 @Builder
 @Data
-public class ConfigBinNamedAccountCredentials
-    implements AccountCredentials<ConfigBinAccountCredentials> {
+public class ConfigBinNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
 

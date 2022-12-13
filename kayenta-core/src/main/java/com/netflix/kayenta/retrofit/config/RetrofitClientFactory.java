@@ -58,9 +58,9 @@ public class RetrofitClientFactory {
   }
 
   public <T> T createClient(
-      Class<T> type, Converter converter, RemoteService remoteService, OkHttpClient okHttpClient) {
+      Class<T> type, Converter converter, String baseUrl, OkHttpClient okHttpClient) {
     try {
-      return createClient(type, converter, remoteService, okHttpClient, null, null, null, null);
+      return createClient(type, converter, baseUrl, okHttpClient, null, null, null, null);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -69,21 +69,14 @@ public class RetrofitClientFactory {
   public <T> T createClient(
       Class<T> type,
       Converter converter,
-      RemoteService remoteService,
+      String baseUrl,
       OkHttpClient okHttpClient,
       String username,
       String password,
       String usernamePasswordFile) {
     try {
       return createClient(
-          type,
-          converter,
-          remoteService,
-          okHttpClient,
-          username,
-          password,
-          usernamePasswordFile,
-          null);
+          type, converter, baseUrl, okHttpClient, username, password, usernamePasswordFile, null);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -92,14 +85,13 @@ public class RetrofitClientFactory {
   public <T> T createClient(
       Class<T> type,
       Converter converter,
-      RemoteService remoteService,
+      String baseUrl,
       OkHttpClient okHttpClient,
       String username,
       String password,
       String usernamePasswordFile,
       String bearerToken)
       throws IOException {
-    String baseUrl = remoteService.getBaseUrl();
 
     baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 

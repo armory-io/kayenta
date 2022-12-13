@@ -21,16 +21,16 @@ import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.wavefront.service.WavefrontRemoteService;
+import java.util.List;
+import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
-import javax.validation.constraints.NotNull;
-import java.util.List;
-
 @Builder
 @Data
-public class WavefrontNamedAccountCredentials extends AccountCredentials<WavefrontNamedAccountCredentials> {
+public class WavefrontNamedAccountCredentials
+    extends AccountCredentials<WavefrontNamedAccountCredentials> {
 
   @NotNull private String name;
 

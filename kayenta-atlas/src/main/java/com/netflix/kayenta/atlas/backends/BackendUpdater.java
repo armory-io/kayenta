@@ -18,7 +18,6 @@ package com.netflix.kayenta.atlas.backends;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.kayenta.atlas.model.Backend;
 import com.netflix.kayenta.atlas.service.BackendsRemoteService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.spinnaker.security.AuthenticatedRequest;
 import com.squareup.okhttp.OkHttpClient;
@@ -46,14 +45,9 @@ public class BackendUpdater {
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient) {
-    RemoteService remoteService = new RemoteService();
-    remoteService.setBaseUrl(uri);
     BackendsRemoteService backendsRemoteService =
         retrofitClientFactory.createClient(
-            BackendsRemoteService.class,
-            new JacksonConverter(objectMapper),
-            remoteService,
-            okHttpClient);
+            BackendsRemoteService.class, new JacksonConverter(objectMapper), uri, okHttpClient);
     try {
       List<Backend> backends = AuthenticatedRequest.allowAnonymous(backendsRemoteService::fetch);
       backendDatabase.update(backends);

@@ -20,31 +20,32 @@ import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.security.AccountCredentials;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public interface MetricsService<Y extends AccountCredentials> {
-    String getType();
+  String getType();
 
-    default String buildQuery(
-            Y metricsAccount,
-            CanaryConfig canaryConfig,
-            CanaryMetricConfig canaryMetricConfig,
-            CanaryScope canaryScope) {
-        return "buildQuery() is not implemented for " + this.getClass().getSimpleName() + ".";
-    }
+  default String buildQuery(
+      Y metricsAccount,
+      CanaryConfig canaryConfig,
+      CanaryMetricConfig canaryMetricConfig,
+      CanaryScope canaryScope) {
+    return "buildQuery() is not implemented for " + this.getClass().getSimpleName() + ".";
+  }
 
-    List<MetricSet> queryMetrics(
-            Y metricsAccount,
-            CanaryConfig canaryConfig,
-            CanaryMetricConfig canaryMetricConfig,
-            CanaryScope canaryScope)
-            throws IOException;
+  List<MetricSet> queryMetrics(
+      Y metricsAccount,
+      CanaryConfig canaryConfig,
+      CanaryMetricConfig canaryMetricConfig,
+      CanaryScope canaryScope)
+      throws IOException;
 
-    default List<Map> getMetadata(Y metricsAccount, String filter) throws IOException {
-        return Collections.emptyList();
-    }
+  default List<Map> getMetadata(Y metricsAccount, String filter) throws IOException {
+    return Collections.emptyList();
+  }
+
+  boolean appliesTo(AccountCredentials account);
 }

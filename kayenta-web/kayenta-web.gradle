@@ -19,7 +19,6 @@ dependencies {
   api project(':kayenta-aws')
   api project(':kayenta-core')
   api project(':kayenta-datadog')
-  api project(':kayenta-gcs')
   api project(':kayenta-google')
   api project(':kayenta-azure')
   api project(':kayenta-graphite')

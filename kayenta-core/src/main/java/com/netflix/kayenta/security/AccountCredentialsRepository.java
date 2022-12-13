@@ -16,27 +16,34 @@
 
 package com.netflix.kayenta.security;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.repository.CrudRepository;
-import org.springframework.util.StringUtils;
 
 public interface AccountCredentialsRepository extends CrudRepository<AccountCredentials, String> {
 
-    default AccountCredentials getRequiredOneBy(String accountName, AccountCredentials.Type accountType) {
-        return findById(accountName).filter(it -> it.getSupportedTypes().contains(accountType))
-                .orElseThrow(
-                        () ->
-                                new IllegalArgumentException(
-                                        "Unable to resolve account of type " + accountType + "."));
+  default AccountCredentials getAccountOrFirstOfTypeWhenEmptyAccount(
+      String accountName, AccountCredentials.Type accountType) {
+    if (StringUtils.isBlank(accountName)) {
+      return getAllOf(accountType).stream().findFirst().orElseThrow();
     }
+    return getRequiredOne(accountName);
+  }
 
-    default Set<AccountCredentials> getAllOf(AccountCredentials.Type credentialsType) {
-        return StreamSupport.stream(findAll().spliterator(), true)
-                .filter(accountCredentials -> accountCredentials.getSupportedTypes().contains(credentialsType))
-                .collect(Collectors.toSet());
-    }
+  default Set<AccountCredentials> getAllOf(AccountCredentials.Type credentialsType) {
+    return StreamSupport.stream(findAll().spliterator(), true)
+        .filter(
+            accountCredentials -> accountCredentials.getSupportedTypes().contains(credentialsType))
+        .collect(Collectors.toSet());
+  }
+
+  default AccountCredentials getRequiredOne(String accountName) {
+    return findById(accountName)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format("Unable to resolve account %s.", accountName)));
+  }
 }

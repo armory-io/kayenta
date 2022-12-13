@@ -28,22 +28,22 @@ import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.util.Retry;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.*;
+import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-
-import javax.validation.constraints.NotNull;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.*;
 
 @Builder
 @Slf4j
@@ -86,7 +86,8 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
   }
 
   @Override
-  public <T> T loadObject(AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey)
+  public <T> T loadObject(
+      AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException {
     AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
@@ -101,7 +102,8 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
     try {
       S3Object s3Object = amazonS3.getObject(bucket, path);
 
-      return deserialize(s3Object, (TypeReference<T>) objectType.getTypeReference());
+      return objectMapper.readValue(
+          s3Object.getObjectContent(), (TypeReference<T>) objectType.getTypeReference());
     } catch (AmazonS3Exception e) {
       log.error("Failed to load {} {}: {}", objectType.getGroup(), objectKey, e.getStatusCode());
       if (e.getStatusCode() == 404) {
@@ -138,11 +140,8 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
     }
   }
 
-  private <T> T deserialize(S3Object s3Object, TypeReference<T> typeReference) throws IOException {
-    return objectMapper.readValue(s3Object.getObjectContent(), typeReference);
-  }
-
-  public <T> void storeObject(AwsNamedAccountCredentials credentials,
+  public <T> void storeObject(
+      AwsNamedAccountCredentials credentials,
       ObjectType objectType,
       String objectKey,
       T obj,
@@ -263,7 +262,8 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
   }
 
   @Override
-  public void deleteObject(AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey) {
+  public void deleteObject(
+      AwsNamedAccountCredentials credentials, ObjectType objectType, String objectKey) {
 
     AmazonS3 amazonS3 = credentials.getCredentials();
     String bucket = credentials.getBucket();
@@ -335,7 +335,10 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
 
   @Override
   public List<Map<String, Object>> listObjectKeys(
-          AwsNamedAccountCredentials credentials, ObjectType objectType, List<String> applications, boolean skipIndex) {
+      AwsNamedAccountCredentials credentials,
+      ObjectType objectType,
+      List<String> applications,
+      boolean skipIndex) {
 
     if (!skipIndex && objectType == ObjectType.CANARY_CONFIG) {
       Set<Map<String, Object>> canaryConfigSet =
@@ -393,6 +396,15 @@ public class S3StorageService implements StorageService<AwsNamedAccountCredentia
 
       return result;
     }
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials credentials) {
+    return credentials instanceof AwsNamedAccountCredentials
+        && (credentials.getSupportedTypes().contains(AccountCredentials.Type.OBJECT_STORE)
+            || credentials
+                .getSupportedTypes()
+                .contains(AccountCredentials.Type.CONFIGURATION_STORE));
   }
 
   private String daoRoot(AwsNamedAccountCredentials credentials, String daoTypeName) {

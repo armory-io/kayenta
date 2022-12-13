@@ -38,10 +38,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -53,7 +50,6 @@ public class ConfigBinStorageService implements StorageService {
 
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry a ConfigBin operation
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
-
 
   @Autowired ObjectMapper kayentaObjectMapper;
 

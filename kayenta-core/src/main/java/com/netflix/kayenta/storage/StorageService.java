@@ -18,26 +18,26 @@ package com.netflix.kayenta.storage;
 
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
-
 import java.util.List;
 import java.util.Map;
 
 public interface StorageService<Y extends AccountCredentials> {
 
   <T> T loadObject(Y accountCredentials, ObjectType objectType, String objectKey)
-          throws IllegalArgumentException, NotFoundException;
+      throws IllegalArgumentException, NotFoundException;
 
   <T> void storeObject(
-          Y accountCredentials,
-          ObjectType objectType,
-          String objectKey,
-          T obj,
-          String filename,
-          boolean isAnUpdate);
+      Y accountCredentials,
+      ObjectType objectType,
+      String objectKey,
+      T obj,
+      String filename,
+      boolean isAnUpdate);
 
   void deleteObject(Y credentials, ObjectType objectType, String objectKey);
 
-  List<Map<String, Object>> listObjectKeys(Y credentials, ObjectType objectType, List<String> applications, boolean skipIndex);
+  List<Map<String, Object>> listObjectKeys(
+      Y credentials, ObjectType objectType, List<String> applications, boolean skipIndex);
 
   default <T> void storeObject(Y credentials, ObjectType objectType, String objectKey, T obj) {
     storeObject(credentials, objectType, objectKey, obj, null, true);
@@ -46,4 +46,14 @@ public interface StorageService<Y extends AccountCredentials> {
   default List<Map<String, Object>> listObjectKeys(Y credentials, ObjectType objectType) {
     return listObjectKeys(credentials, objectType, null, false);
   }
+
+  /**
+   * (t.getSupportedTypes().contains(AccountCredentials.Type.CONFIGURATION_STORE) ||
+   * t.getSupportedTypes().contains(AccountCredentials.Type.OBJECT_STORE)) && t.instanceOf your
+   * credentials class
+   *
+   * @param credentials
+   * @return
+   */
+  boolean appliesTo(AccountCredentials credentials);
 }

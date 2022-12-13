@@ -16,13 +16,17 @@
 
 package com.netflix.kayenta.azure.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.experimental.SuperBuilder;
 
 @Data
-public class AzureManagedAccount {
+@SuperBuilder
+public class AzureManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
 
@@ -32,9 +36,20 @@ public class AzureManagedAccount {
 
   @NotNull private String endpointSuffix;
 
-  private String container;
+  @JsonIgnore private String container;
+  @JsonIgnore private CloudBlobContainer azureContainer;
 
   private String rootFolder;
 
-  private List<AccountCredentials.Type> supportedTypes;
+  //  private List<AccountCredentials.Type> supportedTypes;
+
+  @Override
+  public List<Type> getSupportedTypes() {
+    return List.of(Type.OBJECT_STORE, Type.CONFIGURATION_STORE);
+  }
+
+  @Override
+  public String getType() {
+    return "azure";
+  }
 }

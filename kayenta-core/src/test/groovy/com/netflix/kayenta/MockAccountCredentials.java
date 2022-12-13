@@ -14,20 +14,29 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.retrofit.config;
+package com.netflix.kayenta;
 
-import javax.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import com.netflix.kayenta.security.AccountCredentials;
+import java.util.Arrays;
+import java.util.List;
 
-@ToString
-@Deprecated
-/**
- * this is silly. Don't use as a single reference to baseUrl. Just use baseURl. Implement an
- * interface if you really want to auto add it reference it vs a class like this.
- */
-public class RemoteService {
+public class MockAccountCredentials extends AccountCredentials {
+  private Type[] supportedTypes;
 
-  @NotNull @Getter @Setter private String baseUrl;
+  private MockAccountCredentials() {}
+
+  public MockAccountCredentials(String s, Type... supportedTypes) {
+    this.supportedTypes = supportedTypes;
+    setName(s);
+  }
+
+  @Override
+  public String getType() {
+    return "mock";
+  }
+
+  @Override
+  public List<Type> getSupportedTypes() {
+    return Arrays.asList(supportedTypes);
+  }
 }
