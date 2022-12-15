@@ -66,7 +66,11 @@ public class KayentaConfiguration {
   }
 
   @Bean
-  StorageServiceRepository storageServiceRepository(List<StorageService> storageServices, AccountCredentialsRepository repo) { return new StorageServiceRepository( repo, storageServices); }
+  StorageServiceRepository storageServiceRepository(
+      List<StorageService> storageServices, AccountCredentialsRepository repo) {
+    return new StorageServiceRepository(repo, storageServices);
+  }
+
   @Bean
   @ConditionalOnMissingBean
   MetricSetMixerService metricSetMixerService() {
