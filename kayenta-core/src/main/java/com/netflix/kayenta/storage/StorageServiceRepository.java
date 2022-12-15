@@ -30,6 +30,7 @@ import org.springframework.stereotype.Component;
  * storage service for ALL requests.
  */
 @Component
+@Deprecated // Should be switching to SQL in an upcoming PR for all storage purposes
 public class StorageServiceRepository {
   List<StorageService> storageServiceList;
   AccountCredentialsRepository accountCredentialsRepository;

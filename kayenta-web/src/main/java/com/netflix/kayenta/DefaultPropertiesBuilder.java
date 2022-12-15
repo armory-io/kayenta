@@ -20,6 +20,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * THIS IS COPIED FROM KORK - TEMPORARY ONLY to fix breaking changes in spring boot 2.4 that seem to
+ * be WIP
+ */
 public class DefaultPropertiesBuilder {
   private final Map<String, Object> defaults;
 

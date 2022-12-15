@@ -104,23 +104,17 @@ public class MetricSetMixerServiceTask implements RetryableTask {
     List<MetricSet> controlMetricSetList =
         controlMetricSetListIds.stream()
             .map(
-                (id) -> {
-                  List<MetricSet> metricsSet =
-                      (List<MetricSet>)
-                          storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id);
-                  return metricsSet;
-                })
+                (id) ->
+                    (List<MetricSet>)
+                        storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id))
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     List<MetricSet> experimentMetricSetList =
         experimentMetricSetListIds.stream()
             .map(
-                (id) -> {
-                  List<MetricSet> metricsSet =
-                      (List<MetricSet>)
-                          storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id);
-                  return metricsSet;
-                })
+                (id) ->
+                    (List<MetricSet>)
+                        storageService.loadObject(storageAccount, ObjectType.METRIC_SET_LIST, id))
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
 

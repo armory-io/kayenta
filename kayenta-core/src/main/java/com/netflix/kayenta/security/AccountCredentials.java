@@ -16,9 +16,6 @@
 
 package com.netflix.kayenta.security;
 
-import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
-import com.netflix.kayenta.storage.StorageService;
 import java.util.Collections;
 import java.util.List;
 import javax.validation.constraints.NotNull;
@@ -37,11 +34,9 @@ public abstract class AccountCredentials {
   // atlas/gcs/newrelic/etc.
   public abstract String getType();
 
-  // I'd ARGUE this should be on an extension that's KaynetAccountcredentials instead.
-
   /**
-   * @Deprecated in favor of using SQL storage engine, so only supported type is MetricService, and
-   * isn't needed to be explicitly set
+   * @Deprecated Long term, accounts will only be metric types. Storage will be in a future SQL only
+   * release for storage purposes.
    *
    * @return
    */
@@ -49,15 +44,10 @@ public abstract class AccountCredentials {
   public abstract List<Type> getSupportedTypes();
 
   public enum Type {
-    METRICS_STORE(MetricsService.class),
-    OBJECT_STORE(StorageService.class),
-    CONFIGURATION_STORE(StorageService.class),
-    REMOTE_JUDGE(RemoteService.class);
-    private final Class typeOfService;
-
-    Type(Class typeOfService) {
-      this.typeOfService = typeOfService;
-    }
+    METRICS_STORE,
+    OBJECT_STORE,
+    CONFIGURATION_STORE,
+    REMOTE_JUDGE
   }
 
   public List<String> getLocations() {
