@@ -86,10 +86,9 @@ public class PrometheusFetchTask implements RetryableTask {
       throw new RuntimeException(e);
     }
     AccountCredentials metricsAccount =
-        accountCredentialsRepository.getRequiredOneBy(
-            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
     AccountCredentials storageAccount =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     return synchronousQueryProcessor.executeQueryAndProduceTaskResult(

@@ -30,6 +30,7 @@ import com.netflix.kayenta.metrics.MetricsRetryConfigurationProperties;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.service.MetricSetPairListService;
+import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.kork.jackson.ObjectMapperSubtypeConfigurer;
 import java.util.List;
@@ -64,6 +65,8 @@ public class KayentaConfiguration {
     return new MapBackedAccountCredentialsRepository();
   }
 
+  @Bean
+  StorageServiceRepository storageServiceRepository(List<StorageService> storageServices, AccountCredentialsRepository repo) { return new StorageServiceRepository( repo, storageServices); }
   @Bean
   @ConditionalOnMissingBean
   MetricSetMixerService metricSetMixerService() {
@@ -116,8 +119,7 @@ public class KayentaConfiguration {
             SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS,
             kayentaSerializationConfigurationProperties.isWriteDurationsAsTimestamps());
 
-    JavaTimeModule module = new JavaTimeModule();
-    objectMapper.registerModule(module);
+    objectMapper.registerModule(new JavaTimeModule());
   }
 
   private void configureObjectMapper(

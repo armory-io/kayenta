@@ -20,6 +20,8 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import io.swagger.annotations.ApiOperation;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -39,6 +41,7 @@ public class CredentialsController {
   @ApiOperation(value = "Retrieve a list of all configured credentials")
   @RequestMapping(method = RequestMethod.GET)
   Set<? extends AccountCredentials> list() {
-    return accountCredentialsRepository.getAll();
+    return StreamSupport.stream(accountCredentialsRepository.findAll().spliterator(), true)
+        .collect(Collectors.toSet());
   }
 }

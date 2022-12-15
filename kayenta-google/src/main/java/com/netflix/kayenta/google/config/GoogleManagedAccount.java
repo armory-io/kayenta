@@ -27,9 +27,11 @@ import java.io.*;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
 @Data
+@NoArgsConstructor // required for Spring binding
 public class GoogleManagedAccount extends AccountCredentials {
 
   @NotNull private String name;

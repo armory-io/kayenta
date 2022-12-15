@@ -17,18 +17,16 @@
 package com.netflix.kayenta.graphite.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.graphite.metrics.GraphiteMetricsService;
 import com.netflix.kayenta.graphite.service.GraphiteRemoteService;
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.squareup.okhttp.OkHttpClient;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -42,6 +40,7 @@ import retrofit.converter.JacksonConverter;
 public class GraphiteConfiguration {
   @Bean
   @ConfigurationProperties("kayenta.graphite")
+  @RefreshScope
   GraphiteConfigurationProperties graphiteConfigurationProperties() {
     return new GraphiteConfigurationProperties();
   }
@@ -54,13 +53,12 @@ public class GraphiteConfiguration {
   }
 
   @Bean
-  MetricsService graphiteMetricsService(
+  boolean graphiteAccountConfig(
       GraphiteConfigurationProperties graphiteConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient,
-      AccountCredentialsRepository accountCredentialsRepository)
-      throws IOException {
+      AccountCredentialsRepository accountCredentialsRepository) {
 
     for (GraphiteManagedAccount account : graphiteConfigurationProperties.getAccounts()) {
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
@@ -82,6 +80,6 @@ public class GraphiteConfiguration {
     log.info(
         "Populated GraphiteMetricsService with {} Graphite accounts.",
         graphiteConfigurationProperties.getAccounts().size());
-    return new GraphiteMetricsService(accountCredentialsRepository);
+    return true;
   }
 }

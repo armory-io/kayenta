@@ -80,20 +80,13 @@ public class WavefrontFetchTask implements RetryableTask {
       log.warn("Unable to parse JSON scope", e);
       throw new RuntimeException(e);
     }
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     return synchronousQueryProcessor.executeQueryAndProduceTaskResult(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
-        canaryConfig,
-        metricIndex,
-        canaryScope);
+        resolvedMetricsAccount, resolvedStorageAccount, canaryConfig, metricIndex, canaryScope);
   }
 }

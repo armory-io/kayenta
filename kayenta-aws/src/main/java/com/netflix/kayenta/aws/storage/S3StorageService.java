@@ -24,7 +24,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
+import com.netflix.kayenta.aws.config.AwsNamedAccountCredentials;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;

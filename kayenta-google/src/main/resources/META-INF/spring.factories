@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.netflix.kayenta.google.config.GoogleConfiguration,com.netflix.kayenta.google.config.GcsConfiguration
+com.netflix.kayenta.google.config.GoogleConfiguration

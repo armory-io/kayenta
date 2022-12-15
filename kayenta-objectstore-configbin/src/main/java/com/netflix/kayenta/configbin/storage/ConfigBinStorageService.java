@@ -22,10 +22,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.netflix.kayenta.canary.CanaryConfig;
-import com.netflix.kayenta.configbin.security.ConfigBinNamedAccountCredentials;
+import com.netflix.kayenta.configbin.config.ConfigBinManagedAccount;
 import com.netflix.kayenta.configbin.service.ConfigBinRemoteService;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
@@ -41,12 +42,14 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import retrofit.RetrofitError;
 
 @Builder
 @Slf4j
-public class ConfigBinStorageService implements StorageService {
+@Component
+public class ConfigBinStorageService implements StorageService<ConfigBinManagedAccount> {
 
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry a ConfigBin operation
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
@@ -60,18 +63,12 @@ public class ConfigBinStorageService implements StorageService {
   private final Retry retry = new Retry();
 
   @Override
-  public boolean servicesAccount(String accountName) {
-    return accountNames.contains(accountName);
-  }
-
-  @Override
-  public <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
+  public <T> T loadObject(
+      ConfigBinManagedAccount credentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException {
-    ConfigBinNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
     String ownerApp = credentials.getOwnerApp();
     String configType = credentials.getConfigType();
-    ConfigBinRemoteService remoteService = credentials.getRemoteService();
+    ConfigBinRemoteService remoteService = credentials.getConfigBinRemoteService();
     String json;
 
     try {
@@ -96,17 +93,15 @@ public class ConfigBinStorageService implements StorageService {
 
   @Override
   public <T> void storeObject(
-      String accountName,
+      ConfigBinManagedAccount credentials,
       ObjectType objectType,
       String objectKey,
       T obj,
       String filename,
       boolean isAnUpdate) {
-    ConfigBinNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
     String ownerApp = credentials.getOwnerApp();
     String configType = credentials.getConfigType();
-    ConfigBinRemoteService remoteService = credentials.getRemoteService();
+    ConfigBinRemoteService remoteService = credentials.getConfigBinRemoteService();
 
     long updatedTimestamp = -1;
     String correlationId = null;
@@ -176,9 +171,7 @@ public class ConfigBinStorageService implements StorageService {
   }
 
   private void checkForDuplicateCanaryConfig(
-      CanaryConfig canaryConfig,
-      String canaryConfigId,
-      ConfigBinNamedAccountCredentials credentials) {
+      CanaryConfig canaryConfig, String canaryConfigId, ConfigBinManagedAccount credentials) {
     String canaryConfigName = canaryConfig.getName();
     List<String> applications = canaryConfig.getApplications();
     String existingCanaryConfigId =
@@ -198,9 +191,8 @@ public class ConfigBinStorageService implements StorageService {
   }
 
   @Override
-  public void deleteObject(String accountName, ObjectType objectType, String objectKey) {
-    ConfigBinNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+  public void deleteObject(
+      ConfigBinManagedAccount credentials, ObjectType objectType, String objectKey) {
     String ownerApp = credentials.getOwnerApp();
     String configType = credentials.getConfigType();
 
@@ -245,7 +237,7 @@ public class ConfigBinStorageService implements StorageService {
       }
     }
 
-    ConfigBinRemoteService remoteService = credentials.getRemoteService();
+    ConfigBinRemoteService remoteService = credentials.getConfigBinRemoteService();
 
     // TODO(mgraff): If remoteService.delete() throws an exception when the target config does not
     // exist, we should
@@ -267,9 +259,10 @@ public class ConfigBinStorageService implements StorageService {
 
   @Override
   public List<Map<String, Object>> listObjectKeys(
-      String accountName, ObjectType objectType, List<String> applications, boolean skipIndex) {
-    ConfigBinNamedAccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+      ConfigBinManagedAccount credentials,
+      ObjectType objectType,
+      List<String> applications,
+      boolean skipIndex) {
 
     if (!skipIndex && objectType == ObjectType.CANARY_CONFIG) {
       Set<Map<String, Object>> canaryConfigSet =
@@ -279,7 +272,7 @@ public class ConfigBinStorageService implements StorageService {
     } else {
       String ownerApp = credentials.getOwnerApp();
       String configType = credentials.getConfigType();
-      ConfigBinRemoteService remoteService = credentials.getRemoteService();
+      ConfigBinRemoteService remoteService = credentials.getConfigBinRemoteService();
       List<String> ids = new ArrayList<>();
       boolean hasNext = true;
       String pageId = null;
@@ -308,6 +301,12 @@ public class ConfigBinStorageService implements StorageService {
     }
   }
 
+  @Override
+  public boolean appliesTo(AccountCredentials credentials) {
+    return credentials instanceof ConfigBinManagedAccount
+        && (credentials.getSupportedTypes().contains(AccountCredentials.Type.CONFIGURATION_STORE));
+  }
+
   private static class ConfigBinListResponse {
     public List<ConfigBinPrefixResponse> nameVersions;
     public String nextPageId;
@@ -318,9 +317,9 @@ public class ConfigBinStorageService implements StorageService {
     public String configName;
   }
 
-  private Map<String, Object> metadataFor(ConfigBinNamedAccountCredentials credentials, String id) {
+  private Map<String, Object> metadataFor(ConfigBinManagedAccount credentials, String id) {
     // TODO: (mgraff) Should factor out to a common method, or just call .load()
-    ConfigBinRemoteService remoteService = credentials.getRemoteService();
+    ConfigBinRemoteService remoteService = credentials.getConfigBinRemoteService();
     String ownerApp = credentials.getOwnerApp();
     String configType = credentials.getConfigType();
     String json;

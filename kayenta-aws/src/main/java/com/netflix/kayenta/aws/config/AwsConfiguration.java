@@ -26,7 +26,6 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.io.IOException;
@@ -35,6 +34,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -48,6 +48,7 @@ public class AwsConfiguration {
 
   @Bean
   @ConfigurationProperties("kayenta.aws")
+  @RefreshScope
   AwsConfigurationProperties awsConfigurationProperties() {
     return new AwsConfigurationProperties();
   }

@@ -73,14 +73,11 @@ public class WavefrontFetchController {
       @RequestParam(required = false) final boolean dryRun)
       throws IOException {
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     WavefrontCanaryMetricSetQueryConfig wavefrontCanaryMetricSetQueryConfig =
         WavefrontCanaryMetricSetQueryConfig.builder()
@@ -103,8 +100,8 @@ public class WavefrontFetchController {
     wavefrontCanaryScope.setStepFromGranularity(step);
 
     return synchronousQueryProcessor.processQueryAndReturnMap(
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        resolvedMetricsAccount,
+        resolvedStorageAccount,
         null,
         canaryMetricConfig,
         0,

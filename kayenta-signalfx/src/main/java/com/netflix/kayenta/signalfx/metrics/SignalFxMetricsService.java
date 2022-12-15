@@ -27,10 +27,10 @@ import com.netflix.kayenta.canary.providers.metrics.QueryPair;
 import com.netflix.kayenta.canary.providers.metrics.SignalFxCanaryMetricSetQueryConfig;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.signalfx.canary.SignalFxCanaryScope;
-import com.netflix.kayenta.signalfx.config.SignalFxScopeConfiguration;
-import com.netflix.kayenta.signalfx.security.SignalFxNamedAccountCredentials;
+import com.netflix.kayenta.signalfx.config.SignalFxManagedAccount;
 import com.netflix.kayenta.signalfx.service.ErrorResponse;
 import com.netflix.kayenta.signalfx.service.SignalFlowExecutionResult;
 import com.netflix.kayenta.signalfx.service.SignalFxRequestError;
@@ -44,17 +44,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import retrofit.RetrofitError;
 
 @Builder
 @Slf4j
-public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccountCredentials> {
+public class SignalFxMetricsService implements MetricsService<SignalFxManagedAccount> {
 
   private static final String SIGNAL_FLOW_ERROR_TEMPLATE =
       "An error occurred while executing the Signal Flow program. "
@@ -66,11 +63,7 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
           + "immediate: %s "
           + "program: %s";
 
-  @NotNull @Singular @Getter private List<String> accountNames;
-
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
-
-  @Autowired private final Map<String, SignalFxScopeConfiguration> signalFxScopeConfigurationMap;
 
   @Autowired private final SignalFxQueryBuilderService queryBuilder;
 
@@ -81,24 +74,26 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
 
   @Override
   public String buildQuery(
-      SignalFxNamedAccountCredentials accountCredentials,
+      SignalFxManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
 
-    SignalFxScopeConfiguration scopeConfiguration =
-        signalFxScopeConfigurationMap.get(accountCredentials.getName());
     SignalFxCanaryScope signalFxCanaryScope = (SignalFxCanaryScope) canaryScope;
     SignalFxCanaryMetricSetQueryConfig queryConfig =
         (SignalFxCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
 
     return queryBuilder.buildQuery(
-        canaryConfig, queryConfig, canaryScope, scopeConfiguration, signalFxCanaryScope);
+        canaryConfig,
+        queryConfig,
+        canaryScope,
+        accountCredentials.getScopeConfiguration(),
+        signalFxCanaryScope);
   }
 
   @Override
   public List<MetricSet> queryMetrics(
-      SignalFxNamedAccountCredentials accountCredentials,
+      SignalFxManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -117,7 +112,7 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
     List<QueryPair> queryPairs =
         Optional.ofNullable(queryConfig.getQueryPairs()).orElse(new LinkedList<>());
 
-    String accessToken = accountCredentials.getCredentials().getAccessToken();
+    String accessToken = accountCredentials.getAccessToken();
     SignalFxSignalFlowRemoteService signalFlowService = accountCredentials.getSignalFlowService();
 
     final long maxDelay = 0;
@@ -200,6 +195,11 @@ public class SignalFxMetricsService implements MetricsService<SignalFxNamedAccou
                     "actual-end-ts", String.valueOf(dp.getLogicalTimestampMs())));
 
     return Collections.singletonList(metricSetBuilder.build());
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof SignalFxManagedAccount;
   }
 
   /**

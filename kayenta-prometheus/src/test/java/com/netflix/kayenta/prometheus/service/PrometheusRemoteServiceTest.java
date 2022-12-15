@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.netflix.kayenta.prometheus.config.PrometheusResponseConverter;
 import com.netflix.kayenta.prometheus.model.PrometheusResults;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.squareup.okhttp.OkHttpClient;
 import java.io.File;
@@ -172,18 +171,12 @@ public class PrometheusRemoteServiceTest {
     return factory;
   }
 
-  private RemoteService getRemoteService(int port) {
-    RemoteService remoteService = new RemoteService();
-    remoteService.setBaseUrl("http://localhost:" + port);
-    return remoteService;
-  }
-
   @SneakyThrows
   private PrometheusRemoteService createClient(Integer port) {
     return retrofitClientFactory.createClient(
         PrometheusRemoteService.class,
         prometheusConverter,
-        getRemoteService(port),
+        "http://localhost:" + port,
         okHttpClient,
         null,
         null,

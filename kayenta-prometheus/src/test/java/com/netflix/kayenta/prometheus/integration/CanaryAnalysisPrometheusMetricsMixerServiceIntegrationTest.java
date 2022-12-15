@@ -13,12 +13,11 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricSetMixerService;
 import com.netflix.kayenta.metrics.MetricSetPair;
 import com.netflix.kayenta.prometheus.canary.PrometheusCanaryScope;
+import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
 import com.netflix.kayenta.prometheus.config.PrometheusResponseConverter;
 import com.netflix.kayenta.prometheus.metrics.PrometheusMetricsService;
 import com.netflix.kayenta.prometheus.model.PrometheusResults;
-import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spectator.api.NoopRegistry;
 import java.time.Instant;
 import java.util.List;
@@ -36,9 +35,7 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
 
   private static final String ACCOUNT_NAME = "some-prometheus-account";
 
-  @Mock private AccountCredentialsRepository accountCredentialsRepository;
-
-  @Mock PrometheusNamedAccountCredentials credentials;
+  @Mock PrometheusManagedAccount credentials;
 
   @Mock PrometheusRemoteService prometheusRemoteService;
 
@@ -56,13 +53,11 @@ public class CanaryAnalysisPrometheusMetricsMixerServiceIntegrationTest {
         spy(
             PrometheusMetricsService.builder()
                 .scopeLabel("instance")
-                .accountCredentialsRepository(accountCredentialsRepository)
                 .registry(new NoopRegistry())
                 .build());
 
     metricSetMixerService = new MetricSetMixerService();
 
-    when(accountCredentialsRepository.getRequiredOne(anyString())).thenReturn(credentials);
     when(credentials.getPrometheusRemoteService()).thenReturn(prometheusRemoteService);
   }
 

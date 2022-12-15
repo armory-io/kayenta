@@ -52,7 +52,6 @@ public class TestableBlobsStorageServiceTest {
     List<String> testAccountNames =
         Arrays.asList("AzDev_Testing_Account_1", "AzDev_Testing_Account_2");
     String kayenataAccountName = "Kayenta_Account_1";
-    String azureAccountName = "AzDev_Testing_Account_1";
     String accountAccessKey = "testAccessKey";
 
     AzureManagedAccount.AzureManagedAccountBuilder credentialsBuilder =

@@ -61,10 +61,8 @@ public class RetrofitClientConfiguration {
   @ConditionalOnMissingBean(ObjectMapper.class)
   ObjectMapper retrofitObjectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
-    KayentaSerializationConfigurationProperties kayentaSerializationConfigurationProperties =
-        new KayentaSerializationConfigurationProperties();
     KayentaConfiguration.configureObjectMapperFeatures(
-        objectMapper, kayentaSerializationConfigurationProperties);
+        objectMapper, new KayentaSerializationConfigurationProperties());
     return objectMapper;
   }
 }

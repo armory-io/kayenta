@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2018 Nike, inc.
+ * Copyright 2022 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License")
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -12,17 +12,25 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-package com.netflix.kayenta.signalfx.security;
+package com.netflix.kayenta.datadog.model;
 
+import java.util.List;
+import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
-@Data
+@Builder
+@ToString
+@EqualsAndHashCode
+@NoArgsConstructor
 @AllArgsConstructor
-public class SignalFxCredentials {
+public class DatadogMetricDescriptorsResponse {
 
-  private String accessToken;
+  @NotNull @Getter private List<String> metrics;
 }

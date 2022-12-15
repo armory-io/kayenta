@@ -36,7 +36,6 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.util.Retry;
 import com.netflix.spectator.api.Registry;
 import com.squareup.okhttp.OkHttpClient;
@@ -45,20 +44,22 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Builder
 @Slf4j
+@AllArgsConstructor
+@Service
+@Component
 public class AtlasMetricsService implements MetricsService<AtlasManagedAccount> {
 
-  public final String URI_SCHEME = "https";
+  public static final String URI_SCHEME = "https";
 
   public final int MAX_RETRIES = 10; // maximum number of times we'll retry an Atlas query
   public final long RETRY_BACKOFF = 1000; // time between retries in millis
-
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
   @Autowired private final RetrofitClientFactory retrofitClientFactory;
 

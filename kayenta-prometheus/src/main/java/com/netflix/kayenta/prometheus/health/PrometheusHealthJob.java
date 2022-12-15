@@ -16,13 +16,12 @@
 
 package com.netflix.kayenta.prometheus.health;
 
-import com.netflix.kayenta.prometheus.config.PrometheusConfigurationProperties;
-import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
+import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import lombok.Builder;
 import lombok.NonNull;
@@ -34,15 +33,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 @Slf4j
 public class PrometheusHealthJob {
 
-  private final PrometheusConfigurationProperties prometheusConfigurationProperties;
   private final AccountCredentialsRepository accountCredentialsRepository;
   private final PrometheusHealthCache healthCache;
 
   public PrometheusHealthJob(
-      PrometheusConfigurationProperties prometheusConfigurationProperties,
       AccountCredentialsRepository accountCredentialsRepository,
       PrometheusHealthCache healthCache) {
-    this.prometheusConfigurationProperties = prometheusConfigurationProperties;
     this.accountCredentialsRepository = accountCredentialsRepository;
     this.healthCache = healthCache;
   }
@@ -52,16 +48,9 @@ public class PrometheusHealthJob {
       fixedDelayString = "${kayenta.prometheus.health.fixed-delay:PT5M}")
   public void run() {
     List<PrometheusHealthStatus> healthStatuses =
-        prometheusConfigurationProperties.getAccounts().stream()
-            .map(
-                account -> {
-                  String name = account.getName();
-                  return accountCredentialsRepository.findById(name);
-                })
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .filter(credentials -> credentials instanceof PrometheusNamedAccountCredentials)
-            .map(credentials -> ((PrometheusNamedAccountCredentials) credentials))
+        StreamSupport.stream(accountCredentialsRepository.findAll().spliterator(), true)
+            .filter(each -> each instanceof PrometheusManagedAccount)
+            .map(credentials -> ((PrometheusManagedAccount) credentials))
             .map(
                 credentials -> {
                   try {

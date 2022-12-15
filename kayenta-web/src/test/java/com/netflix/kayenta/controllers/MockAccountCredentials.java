@@ -14,19 +14,29 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.signalfx.config;
+package com.netflix.kayenta.controllers;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.netflix.kayenta.security.AccountCredentials;
+import java.util.Arrays;
+import java.util.List;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class SignalFxScopeConfiguration {
+public class MockAccountCredentials extends AccountCredentials {
+  private Type[] supportedTypes;
 
-  private String defaultScopeKey;
-  private String defaultLocationKey;
+  private MockAccountCredentials() {}
+
+  public MockAccountCredentials(String s, Type... supportedTypes) {
+    this.supportedTypes = supportedTypes;
+    setName(s);
+  }
+
+  @Override
+  public String getType() {
+    return "mock";
+  }
+
+  @Override
+  public List<Type> getSupportedTypes() {
+    return Arrays.asList(supportedTypes);
+  }
 }

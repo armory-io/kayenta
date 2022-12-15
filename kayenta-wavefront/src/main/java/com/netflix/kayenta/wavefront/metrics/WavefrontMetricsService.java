@@ -21,10 +21,10 @@ import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.WavefrontCanaryMetricSetQueryConfig;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.wavefront.canary.WavefrontCanaryScope;
-import com.netflix.kayenta.wavefront.security.WavefrontCredentials;
-import com.netflix.kayenta.wavefront.security.WavefrontNamedAccountCredentials;
+import com.netflix.kayenta.wavefront.config.WavefrontManagedAccount;
 import com.netflix.kayenta.wavefront.service.WavefrontRemoteService;
 import com.netflix.kayenta.wavefront.service.WavefrontTimeSeries;
 import com.netflix.spectator.api.Registry;
@@ -38,10 +38,12 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Builder
 @Slf4j
-public class WavefrontMetricsService implements MetricsService<WavefrontNamedAccountCredentials> {
+@Component
+public class WavefrontMetricsService implements MetricsService<WavefrontManagedAccount> {
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -54,7 +56,7 @@ public class WavefrontMetricsService implements MetricsService<WavefrontNamedAcc
 
   @Override
   public String buildQuery(
-      WavefrontNamedAccountCredentials accountCredentials,
+      WavefrontManagedAccount accountCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -76,22 +78,21 @@ public class WavefrontMetricsService implements MetricsService<WavefrontNamedAcc
 
   @Override
   public List<MetricSet> queryMetrics(
-      WavefrontNamedAccountCredentials accountCredentials,
+      WavefrontManagedAccount credentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
     WavefrontCanaryScope wavefrontCanaryScope = (WavefrontCanaryScope) canaryScope;
-    WavefrontCredentials credentials = accountCredentials.getCredentials();
-    WavefrontRemoteService wavefrontRemoteService = accountCredentials.getWavefrontRemoteService();
+    WavefrontRemoteService wavefrontRemoteService = credentials.getWavefrontRemoteService();
 
     WavefrontCanaryMetricSetQueryConfig queryConfig =
         (WavefrontCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
-    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
+    String query = buildQuery(credentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     WavefrontTimeSeries timeSeries =
         wavefrontRemoteService.fetch(
-            credentials.getApiToken(),
+            "Bearer " + credentials.getApiToken(),
             "Kayenta-Query",
             query,
             wavefrontCanaryScope.getStart().toEpochMilli(),
@@ -148,5 +149,10 @@ public class WavefrontMetricsService implements MetricsService<WavefrontNamedAcc
       metricSetList.add(metricSetBuilder.build());
     }
     return metricSetList;
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof WavefrontManagedAccount;
   }
 }

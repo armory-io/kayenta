@@ -44,11 +44,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
 @AllArgsConstructor
+@Component
+@ConditionalOnProperty("kayenta.gcs.enabled")
 public class GcsStorageService implements StorageService<GoogleManagedAccount> {
 
   @Autowired private ObjectMapper kayentaObjectMapper;

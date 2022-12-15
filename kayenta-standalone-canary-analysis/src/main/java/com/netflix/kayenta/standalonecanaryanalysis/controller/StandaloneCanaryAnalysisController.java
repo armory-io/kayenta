@@ -127,24 +127,20 @@ public class StandaloneCanaryAnalysisController {
           @PathVariable
           String canaryConfigId) {
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    String resolvedConfigurationAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE)
-            .getName();
-
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+    AccountCredentials resolvedConfigurationAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
     StorageService configurationService =
-        storageServiceRepository.getRequiredOne(resolvedConfigurationAccountName);
+        storageServiceRepository.getRequiredOne(resolvedConfigurationAccount);
     CanaryConfig canaryConfig =
-        configurationService.loadObject(
-            resolvedConfigurationAccountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+        (CanaryConfig)
+            configurationService.loadObject(
+                resolvedConfigurationAccount, ObjectType.CANARY_CONFIG, canaryConfigId);
 
     return canaryAnalysisService.initiateCanaryAnalysisExecution(
         CanaryAnalysisConfig.builder()
@@ -153,8 +149,8 @@ public class StandaloneCanaryAnalysisController {
             .parentPipelineExecutionId(parentPipelineExecutionId)
             .canaryConfigId(canaryConfigId)
             .executionRequest(canaryAnalysisExecutionRequest)
-            .metricsAccountName(resolvedMetricsAccountName)
-            .storageAccountName(resolvedStorageAccountName)
+            .metricsAccountName(resolvedMetricsAccount.getName())
+            .storageAccountName(resolvedStorageAccount.getName())
             .configurationAccountName(configurationAccountName)
             .canaryConfig(QueryConfigUtils.escapeTemplates(canaryConfig))
             .build());
@@ -206,14 +202,11 @@ public class StandaloneCanaryAnalysisController {
       @ApiParam(required = true) @RequestBody
           final CanaryAnalysisAdhocExecutionRequest canaryAnalysisAdhocExecutionRequest) {
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     if (canaryAnalysisAdhocExecutionRequest.getCanaryConfig() == null) {
       throw new IllegalArgumentException("canaryConfig must be provided for ad-hoc requests");
@@ -228,8 +221,8 @@ public class StandaloneCanaryAnalysisController {
             .application(Optional.ofNullable(application).orElse(AD_HOC))
             .parentPipelineExecutionId(parentPipelineExecutionId)
             .executionRequest(canaryAnalysisAdhocExecutionRequest.getExecutionRequest())
-            .metricsAccountName(resolvedMetricsAccountName)
-            .storageAccountName(resolvedStorageAccountName)
+            .metricsAccountName(resolvedMetricsAccount.getName())
+            .storageAccountName(resolvedStorageAccount.getName())
             .canaryConfig(
                 QueryConfigUtils.escapeTemplates(
                     canaryAnalysisAdhocExecutionRequest.getCanaryConfig()))

@@ -25,10 +25,12 @@ import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 
 @Data
+@NoArgsConstructor // required for Spring binding
 public class NewRelicManagedAccount extends AccountCredentials {
 
   @NotNull private String name;

@@ -17,9 +17,6 @@
 package com.netflix.kayenta.newrelic.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.newrelic.metrics.NewRelicMetricsService;
-import com.netflix.kayenta.newrelic.metrics.NewRelicQueryBuilderService;
 import com.netflix.kayenta.newrelic.service.NewRelicRemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
@@ -27,7 +24,6 @@ import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.squareup.okhttp.OkHttpClient;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -80,8 +76,8 @@ public class NewRelicConfiguration {
                         .build()));
   }
 
-  @PostConstruct
-  public void initializeAccounts(
+  @Bean
+  public boolean configureNewrelicAccounts(
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient,
@@ -106,20 +102,11 @@ public class NewRelicConfiguration {
 
       accountCredentialsRepository.save(account);
     }
-  }
-
-  @Bean
-  MetricsService newrelicMetricsService(
-      Map<String, NewRelicScopeConfiguration> newrelicScopeConfigurationMap,
-      NewRelicConfigurationProperties newrelicConfigurationProperties) {
-
     log.info(
         "Configured the New Relic Metrics Service with the following accounts: {}",
-        newrelicConfigurationProperties.getAccounts().stream()
+        newRelicConfigurationProperties.getAccounts().stream()
             .map(NewRelicManagedAccount::getName)
             .collect(Collectors.joining(",")));
-
-    return new NewRelicMetricsService(
-        newrelicScopeConfigurationMap, new NewRelicQueryBuilderService());
+    return true;
   }
 }

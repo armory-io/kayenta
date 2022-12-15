@@ -80,15 +80,15 @@ public class RunCanaryTask implements Task {
     request.setExecutionRequest(executionRequest);
 
     CanaryExecutionResponse canaryExecutionResponse;
+
+    // This pattern is very duplicated... wondering if better ways to handle this, remove a LOT of
+    // this farther down the pipe kinda thing.
     try {
-      String resolvedMetricsAccountName =
-          accountCredentialsRepository
-              .getRequiredOneBy(metricsAccount, AccountCredentials.Type.METRICS_STORE)
-              .getName();
-      String resolvedStorageAccountName =
-          accountCredentialsRepository
-              .getRequiredOneBy(storageAccount, AccountCredentials.Type.OBJECT_STORE)
-              .getName();
+      AccountCredentials resolvedMetricsAccount =
+          accountCredentialsRepository.getRequiredOne(metricsAccount);
+      AccountCredentials resolvedStorageAccount =
+          accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+              storageAccount, AccountCredentials.Type.OBJECT_STORE);
 
       if (request.getCanaryConfig() == null) {
         throw new IllegalArgumentException("canaryConfig must be provided for ad-hoc requests");
@@ -104,8 +104,8 @@ public class RunCanaryTask implements Task {
               Optional.ofNullable(context.getCanaryConfigId()).orElse(AD_HOC),
               request.getCanaryConfig(),
               null,
-              resolvedMetricsAccountName,
-              resolvedStorageAccountName,
+              resolvedMetricsAccount.getName(),
+              resolvedStorageAccount.getName(),
               request.getExecutionRequest());
     } catch (Exception e) {
       throw new RuntimeException("Failed to initiate canary analysis", e);

@@ -1,7 +1,7 @@
 /*
- * Copyright 2017 Google, Inc.
+ * Copyright 2022 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License")
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.aws.security;
+package com.netflix.kayenta.aws.config;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -22,11 +22,13 @@ import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.Singular;
 import lombok.experimental.SuperBuilder;
 
 @SuperBuilder
 @Data
+@NoArgsConstructor // required for Spring binding
 public class AwsNamedAccountCredentials extends AccountCredentials {
 
   @NotNull private String name;
@@ -52,7 +54,7 @@ public class AwsNamedAccountCredentials extends AccountCredentials {
     String sessionToken;
   }
 
-  @JsonIgnore private AmazonS3 credentials;
+  @JsonIgnore private transient AmazonS3 credentials;
 
   @Override
   public String getType() {

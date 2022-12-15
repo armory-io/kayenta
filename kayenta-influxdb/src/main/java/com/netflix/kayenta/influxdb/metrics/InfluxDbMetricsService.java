@@ -27,7 +27,6 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricSet.MetricSetBuilder;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spectator.api.Id;
 import com.netflix.spectator.api.Registry;
 import java.time.Instant;
@@ -38,11 +37,12 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @AllArgsConstructor
+@Component
 public class InfluxDbMetricsService implements MetricsService<InfluxDbManagedAccount> {
-  private final AccountCredentialsRepository accountCredentialsRepository;
   private final Registry registry;
   private final InfluxDbQueryBuilder queryBuilder;
 

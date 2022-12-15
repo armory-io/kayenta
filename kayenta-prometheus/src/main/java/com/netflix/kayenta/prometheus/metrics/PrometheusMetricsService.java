@@ -27,31 +27,30 @@ import com.netflix.kayenta.prometheus.canary.PrometheusCanaryScope;
 import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
 import com.netflix.kayenta.prometheus.model.PrometheusResults;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.spectator.api.Id;
 import com.netflix.spectator.api.Registry;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-@Builder
 @Slf4j
+@Component
+@RequiredArgsConstructor
+@Builder()
 public class PrometheusMetricsService implements MetricsService<PrometheusManagedAccount> {
 
-  @NotNull private String scopeLabel;
-
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
+  @Autowired private final String scopeLabel;
 
   @Autowired private final Registry registry;
-
-  @Autowired private final PrometheusMetricDescriptorsCache metricDescriptorsCache;
 
   @Override
   public String getType() {
@@ -303,5 +302,10 @@ public class PrometheusMetricsService implements MetricsService<PrometheusManage
     }
 
     return metricSetList;
+  }
+
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof PrometheusManagedAccount;
   }
 }

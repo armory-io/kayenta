@@ -19,6 +19,7 @@ package com.netflix.kayenta.standalonecanaryanalysis.service;
 import static com.netflix.kayenta.standalonecanaryanalysis.orca.task.GenerateCanaryAnalysisResultTask.CANARY_ANALYSIS_EXECUTION_RESULT;
 import static java.util.Optional.ofNullable;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -32,7 +33,7 @@ import com.netflix.kayenta.standalonecanaryanalysis.domain.StageMetadata;
 import com.netflix.kayenta.standalonecanaryanalysis.orca.MonitorKayentaCanaryContext;
 import com.netflix.kayenta.standalonecanaryanalysis.orca.stage.GenerateCanaryAnalysisResultStage;
 import com.netflix.kayenta.standalonecanaryanalysis.orca.stage.SetupAndExecuteCanariesStage;
-import com.netflix.kayenta.standalonecanaryanalysis.storage.StandaloneCanaryAnalysisObjectType;
+import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.orca.api.pipeline.models.ExecutionStatus;
@@ -140,18 +141,20 @@ public class CanaryAnalysisService {
       return Optional.ofNullable(nullableStorageAccountName)
           .map(
               storageAccountName -> {
-                String resolvedStorageAccountName =
-                    accountCredentialsRepository
-                        .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-                        .getName();
+                AccountCredentials resolvedStorageAccount =
+                    accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+                        storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
                 StorageService storageService =
-                    storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
+                    storageServiceRepository.getRequiredOne(resolvedStorageAccount);
 
                 return (CanaryAnalysisExecutionStatusResponse)
                     storageService.loadObject(
-                        resolvedStorageAccountName,
-                        StandaloneCanaryAnalysisObjectType.STANDALONE_CANARY_RESULT_ARCHIVE,
+                        resolvedStorageAccount,
+                        new ObjectType(
+                            new TypeReference<CanaryAnalysisExecutionStatusResponse>() {},
+                            "standalone_canary_archive",
+                            "standalone_canary_archive.json"),
                         canaryAnalysisExecutionId);
               })
           .orElseThrow(() -> e);

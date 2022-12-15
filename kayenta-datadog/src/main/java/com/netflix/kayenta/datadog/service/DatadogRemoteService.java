@@ -16,7 +16,7 @@
 
 package com.netflix.kayenta.datadog.service;
 
-import com.netflix.kayenta.model.DatadogMetricDescriptorsResponse;
+import com.netflix.kayenta.datadog.model.DatadogMetricDescriptorsResponse;
 import retrofit.http.GET;
 import retrofit.http.Header;
 import retrofit.http.Query;

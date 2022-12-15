@@ -126,10 +126,9 @@ public class StackdriverFetchController {
             endTimeIso, "end", stackdriverConfigurationTestControllerDefaultProperties);
 
     AccountCredentials metricsAccountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
-            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
     AccountCredentials storageAccountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     StackdriverCanaryMetricSetQueryConfig.StackdriverCanaryMetricSetQueryConfigBuilder

@@ -22,10 +22,12 @@ import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Data
 @SuperBuilder
+@NoArgsConstructor // required for Spring binding
 public class AzureManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
@@ -35,9 +37,8 @@ public class AzureManagedAccount extends AccountCredentials {
   @NotNull private String accountAccessKey;
 
   @NotNull private String endpointSuffix;
-
-  @JsonIgnore private String container;
-  @JsonIgnore private CloudBlobContainer azureContainer;
+  private String container;
+  @JsonIgnore private transient CloudBlobContainer azureContainer;
 
   private String rootFolder;
 

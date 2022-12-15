@@ -16,11 +16,9 @@
 
 package com.netflix.kayenta.prometheus.config;
 
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.prometheus.health.PrometheusHealthCache;
 import com.netflix.kayenta.prometheus.health.PrometheusHealthIndicator;
 import com.netflix.kayenta.prometheus.health.PrometheusHealthJob;
-import com.netflix.kayenta.prometheus.metrics.PrometheusMetricsService;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
@@ -32,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.condition.AllNestedConditions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.*;
 import org.springframework.util.CollectionUtils;
 
@@ -40,9 +39,14 @@ import org.springframework.util.CollectionUtils;
 @ComponentScan({"com.netflix.kayenta.prometheus"})
 @Slf4j
 public class PrometheusConfiguration {
+  @Bean
+  @ConfigurationProperties("kayenta.prometheus")
+  PrometheusConfigurationProperties prometheusConfigurationProperties() {
+    return new PrometheusConfigurationProperties();
+  }
 
   @Bean
-  MetricsService prometheusMetricsService(
+  boolean prometheusAccountConfig(
       PrometheusResponseConverter prometheusConverter,
       PrometheusConfigurationProperties prometheusConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
@@ -63,7 +67,7 @@ public class PrometheusConfiguration {
               retrofitClientFactory.createClient(
                   PrometheusRemoteService.class,
                   prometheusConverter,
-                  prometheusManagedAccount.getEndpoint(),
+                  prometheusManagedAccount.getBaseUrl(),
                   okHttpClient,
                   prometheusManagedAccount.getUsername(),
                   prometheusManagedAccount.getPassword(),
@@ -79,9 +83,7 @@ public class PrometheusConfiguration {
     }
     ;
 
-    return PrometheusMetricsService.builder()
-        .scopeLabel(prometheusConfigurationProperties.getScopeLabel())
-        .build();
+    return true;
   }
 
   @Conditional(PrometheusHealthEnabled.class)
@@ -97,11 +99,9 @@ public class PrometheusConfiguration {
     @DependsOn("prometheusMetricsService")
     @Bean
     PrometheusHealthJob prometheusHealthJob(
-        PrometheusConfigurationProperties prometheusConfigurationProperties,
         AccountCredentialsRepository accountCredentialsRepository,
         PrometheusHealthCache prometheusHealthCache) {
-      return new PrometheusHealthJob(
-          prometheusConfigurationProperties, accountCredentialsRepository, prometheusHealthCache);
+      return new PrometheusHealthJob(accountCredentialsRepository, prometheusHealthCache);
     }
 
     @Bean

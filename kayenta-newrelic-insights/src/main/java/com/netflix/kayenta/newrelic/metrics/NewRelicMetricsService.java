@@ -46,7 +46,6 @@ import org.springframework.stereotype.Component;
 public class NewRelicMetricsService implements MetricsService<NewRelicManagedAccount> {
 
   @Autowired private final Map<String, NewRelicScopeConfiguration> newrelicScopeConfigurationMap;
-
   @Autowired private final NewRelicQueryBuilderService queryBuilder;
 
   @Override

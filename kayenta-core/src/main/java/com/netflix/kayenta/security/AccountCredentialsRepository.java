@@ -24,6 +24,10 @@ import org.springframework.data.repository.CrudRepository;
 
 public interface AccountCredentialsRepository extends CrudRepository<AccountCredentials, String> {
 
+  /*
+  This does a "If the account is blank, lookup the first available of given type.  SHOULD ONLY be used for storage/config store type accounts
+  IF account isn't blank, it's a wrapper to getRequiredOne which REQUIRES the account to exist or blows up
+   */
   default AccountCredentials getAccountOrFirstOfTypeWhenEmptyAccount(
       String accountName, AccountCredentials.Type accountType) {
     if (StringUtils.isBlank(accountName)) {

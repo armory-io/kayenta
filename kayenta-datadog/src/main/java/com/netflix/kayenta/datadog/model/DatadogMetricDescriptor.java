@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.netflix.kayenta.model;
+package com.netflix.kayenta.datadog.model;
 
 import java.util.Collections;
 import java.util.Map;

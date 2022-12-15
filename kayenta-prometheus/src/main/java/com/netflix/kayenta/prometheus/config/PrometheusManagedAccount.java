@@ -23,18 +23,26 @@ import com.netflix.kayenta.security.AccountCredentials;
 import java.util.Collections;
 import java.util.List;
 import javax.validation.constraints.NotNull;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Data
+@SuperBuilder
+@NoArgsConstructor
 public class PrometheusManagedAccount extends AccountCredentials {
 
-  @NotNull private String name;
-
   // Location of prometheus server.
-  @NotNull @Getter @Setter private RemoteService endpoint;
+  @Getter @Setter private String baseUrl;
+  @NotNull private RemoteService endpoint;
 
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    this.baseUrl = endpoint.getBaseUrl();
+  }
   // Optional parameter for use when protecting prometheus with basic auth.
   private String username;
 
@@ -56,5 +64,5 @@ public class PrometheusManagedAccount extends AccountCredentials {
   }
   // The prometheus server location.
 
-  @JsonIgnore PrometheusRemoteService prometheusRemoteService;
+  @Getter @Setter @JsonIgnore private transient PrometheusRemoteService prometheusRemoteService;
 }

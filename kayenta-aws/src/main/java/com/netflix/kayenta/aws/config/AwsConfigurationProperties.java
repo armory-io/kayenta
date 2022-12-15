@@ -16,7 +16,6 @@
 
 package com.netflix.kayenta.aws.config;
 
-import com.netflix.kayenta.aws.security.AwsNamedAccountCredentials;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;

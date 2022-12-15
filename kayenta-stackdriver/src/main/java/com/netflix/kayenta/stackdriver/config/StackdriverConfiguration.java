@@ -16,19 +16,12 @@
 
 package com.netflix.kayenta.stackdriver.config;
 
-import com.netflix.kayenta.google.security.GoogleNamedAccountCredentials;
-import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.kayenta.stackdriver.metrics.StackdriverMetricsService;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
 
 @Configuration
 @ConditionalOnProperty("kayenta.stackdriver.enabled")
@@ -47,28 +40,5 @@ public class StackdriverConfiguration {
   StackdriverConfigurationTestControllerDefaultProperties
       stackdriverConfigurationTestControllerDefaultProperties() {
     return new StackdriverConfigurationTestControllerDefaultProperties();
-  }
-
-  @Bean
-  @DependsOn({"registerGoogleCredentials"})
-  MetricsService stackdriverMetricsService(
-      AccountCredentialsRepository accountCredentialsRepository) {
-    StackdriverMetricsService.StackdriverMetricsServiceBuilder stackdriverMetricsServiceBuilder =
-        StackdriverMetricsService.builder();
-
-    StackdriverMetricsService stackdriverMetricsService = stackdriverMetricsServiceBuilder.build();
-    Stream<AccountCredentials> accounts =
-        accountCredentialsRepository.getAllOf(AccountCredentials.Type.METRICS_STORE).stream()
-            .filter(c -> c instanceof GoogleNamedAccountCredentials);
-
-    accounts.forEach(
-        it -> {
-          ((GoogleNamedAccountCredentials) it).setMetricsService(stackdriverMetricsService);
-          accountCredentialsRepository.save(it);
-        });
-
-    log.info("Populated StackdriverMetricsService with {} Google accounts.", accounts.size());
-
-    return stackdriverMetricsService;
   }
 }

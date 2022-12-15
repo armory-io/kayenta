@@ -17,20 +17,12 @@
 
 package com.netflix.kayenta.signalfx.config;
 
-import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.kayenta.signalfx.metrics.SignalFxMetricsService;
-import com.netflix.kayenta.signalfx.security.SignalFxCredentials;
-import com.netflix.kayenta.signalfx.security.SignalFxNamedAccountCredentials;
 import com.netflix.kayenta.signalfx.service.SignalFxConverter;
 import com.netflix.kayenta.signalfx.service.SignalFxSignalFlowRemoteService;
 import com.squareup.okhttp.OkHttpClient;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,6 +31,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 @Configuration
 @ConditionalOnProperty("kayenta.signalfx.enabled")
@@ -55,61 +48,35 @@ public class SignalFxConfiguration {
   }
 
   @Bean
-  Map<String, SignalFxScopeConfiguration> signalFxScopeConfigurationMap(
-      SignalFxConfigurationProperties signalFxConfigurationProperties) {
-    return signalFxConfigurationProperties.getAccounts().stream()
-        .collect(
-            Collectors.toMap(
-                SignalFxManagedAccount::getName,
-                accountConfig ->
-                    SignalFxScopeConfiguration.builder()
-                        .defaultScopeKey(accountConfig.getDefaultScopeKey())
-                        .defaultLocationKey(accountConfig.getDefaultLocationKey())
-                        .build()));
-  }
-
-  @Bean
-  MetricsService signalFxMetricService(
+  boolean signalFxMetricService(
       SignalFxConfigurationProperties signalFxConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       OkHttpClient okHttpClient,
       AccountCredentialsRepository accountCredentialsRepository) {
 
-    SignalFxMetricsService.SignalFxMetricsServiceBuilder metricsServiceBuilder =
-        SignalFxMetricsService.builder();
-
     for (SignalFxManagedAccount signalFxManagedAccount :
         signalFxConfigurationProperties.getAccounts()) {
-      String name = signalFxManagedAccount.getName();
-      List<AccountCredentials.Type> supportedTypes = signalFxManagedAccount.getSupportedTypes();
-      SignalFxCredentials signalFxCredentials =
-          new SignalFxCredentials(signalFxManagedAccount.getAccessToken());
+      if (!StringUtils.hasText(signalFxManagedAccount.getBaseUrl())) {
+        signalFxManagedAccount.setBaseUrl(SIGNAL_FX_SIGNAL_FLOW_ENDPOINT_URI);
+      }
+      signalFxManagedAccount.setScopeConfiguration(
+          new SignalFxScopeConfiguration(
+              signalFxManagedAccount.getDefaultScopeKey(),
+              signalFxManagedAccount.getDefaultLocationKey()));
 
-      final RemoteService signalFxSignalFlowEndpoint =
-          Optional.ofNullable(signalFxManagedAccount.getEndpoint())
-              .orElse(new RemoteService().setBaseUrl(SIGNAL_FX_SIGNAL_FLOW_ENDPOINT_URI));
-
-      SignalFxNamedAccountCredentials.SignalFxNamedAccountCredentialsBuilder
-          accountCredentialsBuilder =
-              SignalFxNamedAccountCredentials.builder()
-                  .name(name)
-                  .endpoint(signalFxSignalFlowEndpoint)
-                  .credentials(signalFxCredentials);
-
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          accountCredentialsBuilder.signalFlowService(
-              retrofitClientFactory.createClient(
-                  SignalFxSignalFlowRemoteService.class,
-                  new SignalFxConverter(),
-                  signalFxSignalFlowEndpoint,
-                  okHttpClient));
-        }
-        accountCredentialsBuilder.supportedTypes(supportedTypes);
+      if (!CollectionUtils.isEmpty(signalFxManagedAccount.getSupportedTypes())
+          && signalFxManagedAccount
+              .getSupportedTypes()
+              .contains(AccountCredentials.Type.METRICS_STORE)) {
+        signalFxManagedAccount.setSignalFlowService(
+            retrofitClientFactory.createClient(
+                SignalFxSignalFlowRemoteService.class,
+                new SignalFxConverter(),
+                signalFxManagedAccount.getBaseUrl(),
+                okHttpClient));
       }
 
-      accountCredentialsRepository.save(name, accountCredentialsBuilder.build());
-      metricsServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(signalFxManagedAccount);
     }
 
     log.info(
@@ -120,6 +87,6 @@ public class SignalFxConfiguration {
                 .map(SignalFxManagedAccount::getName)
                 .collect(Collectors.toList())));
 
-    return metricsServiceBuilder.build();
+    return true;
   }
 }

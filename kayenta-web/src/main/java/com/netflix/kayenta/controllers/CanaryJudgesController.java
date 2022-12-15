@@ -91,22 +91,21 @@ public class CanaryJudgesController {
       @RequestParam final String metricSetPairListId,
       @RequestParam final Double passThreshold,
       @RequestParam final Double marginalThreshold) {
-    String resolvedConfigurationAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+    AccountCredentials resolvedConfigurationAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
+
     StorageService configurationService =
-        storageServiceRepository.getRequiredOne(resolvedConfigurationAccountName);
-    StorageService storageService =
-        storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
+        storageServiceRepository.getRequiredOne(resolvedConfigurationAccount);
+    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedStorageAccount);
 
     CanaryConfig canaryConfig =
-        configurationService.loadObject(
-            resolvedConfigurationAccountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+        (CanaryConfig)
+            configurationService.loadObject(
+                resolvedConfigurationAccount, ObjectType.CANARY_CONFIG, canaryConfigId);
     CanaryJudgeConfig canaryJudgeConfig = canaryConfig.getJudge();
     CanaryJudge canaryJudge = null;
 
@@ -130,8 +129,9 @@ public class CanaryJudgesController {
     }
 
     List<MetricSetPair> metricSetPairList =
-        storageService.loadObject(
-            resolvedStorageAccountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+        (List<MetricSetPair>)
+            storageService.loadObject(
+                resolvedStorageAccount, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
     CanaryClassifierThresholdsConfig canaryClassifierThresholdsConfig =
         CanaryClassifierThresholdsConfig.builder()
             .pass(passThreshold)
@@ -159,20 +159,19 @@ public class CanaryJudgesController {
       @RequestParam final Double passThreshold,
       @RequestParam final Double marginalThreshold)
       throws JsonProcessingException {
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    String resolvedConfigurationAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE)
-            .getName();
-
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+    AccountCredentials resolvedConfigurationAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
     StorageService configurationService =
-        storageServiceRepository.getRequiredOne(resolvedConfigurationAccountName);
+        storageServiceRepository.getRequiredOne(resolvedConfigurationAccount);
+
     CanaryConfig canaryConfig =
-        configurationService.loadObject(
-            resolvedConfigurationAccountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+        (CanaryConfig)
+            configurationService.loadObject(
+                resolvedConfigurationAccount, ObjectType.CANARY_CONFIG, canaryConfigId);
 
     return executionMapper.buildJudgeComparisonExecution(
         "judge-comparison",
@@ -184,8 +183,8 @@ public class CanaryJudgesController {
         metricSetPairListId,
         passThreshold,
         marginalThreshold,
-        resolvedConfigurationAccountName,
-        resolvedStorageAccountName);
+        resolvedStorageAccount.getName(),
+        resolvedStorageAccount.getName());
   }
 
   @ApiOperation(value = "Retrieve the results of a judge comparison")

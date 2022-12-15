@@ -29,15 +29,15 @@ import com.netflix.kayenta.graphite.service.GraphiteRemoteService;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentials;
-import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Slf4j
+@Component
 public class GraphiteMetricsService implements MetricsService<GraphiteManagedAccount> {
   private static final String DEFAULT_FORMAT = "json";
   private static final String DEFAULT_DESCRIPTOR_FORMAT = "completer";
@@ -46,12 +46,6 @@ public class GraphiteMetricsService implements MetricsService<GraphiteManagedAcc
   private static final String DELIMITER = ".";
   private static final String GRAPHITE_QUERY_WILDCARD = "*";
   private static final String GRAPHITE_IS_LEAF = "1";
-
-  @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
-
-  public GraphiteMetricsService(AccountCredentialsRepository accountCredentialsRepository) {
-    this.accountCredentialsRepository = accountCredentialsRepository;
-  }
 
   @Override
   public String getType() {

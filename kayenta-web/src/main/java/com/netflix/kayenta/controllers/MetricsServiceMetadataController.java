@@ -17,6 +17,7 @@
 package com.netflix.kayenta.controllers;
 
 import com.netflix.kayenta.metrics.MetricsService;
+import com.netflix.kayenta.metrics.MetricsServiceRepository;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import io.swagger.annotations.ApiOperation;
@@ -37,11 +38,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MetricsServiceMetadataController {
 
   private final AccountCredentialsRepository accountCredentialsRepository;
+  private final MetricsServiceRepository metricsServiceRepository;
 
   @Autowired
   public MetricsServiceMetadataController(
-      AccountCredentialsRepository accountCredentialsRepository) {
+      AccountCredentialsRepository accountCredentialsRepository,
+      MetricsServiceRepository metricsServiceRepository) {
     this.accountCredentialsRepository = accountCredentialsRepository;
+    this.metricsServiceRepository = metricsServiceRepository;
   }
 
   @ApiOperation(value = "Retrieve a list of descriptors for use in populating the canary config ui")
@@ -51,10 +55,9 @@ public class MetricsServiceMetadataController {
       @RequestParam(required = false) final String filter)
       throws IOException {
     AccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             metricsAccountName, AccountCredentials.Type.METRICS_STORE);
-    MetricsService metricsService =
-        accountCredentials.getServiceForType(AccountCredentials.Type.METRICS_STORE);
+    MetricsService metricsService = metricsServiceRepository.getRequiredOne(accountCredentials);
     List<Map> matchingDescriptors = metricsService.getMetadata(accountCredentials, filter);
 
     if (StringUtils.isEmpty(filter)) {

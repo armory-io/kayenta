@@ -17,15 +17,12 @@
 package com.netflix.kayenta.datadog.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.datadog.metrics.DatadogMetricsService;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spinnaker.kork.annotations.VisibleForTesting;
 import com.squareup.okhttp.OkHttpClient;
-import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -55,27 +52,24 @@ public class DatadogConfiguration {
   }
 
   @Bean
-  MetricsService datadogMetricsService(
+  public boolean datadogAccountConfig(
       DatadogConfigurationProperties datadogConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
       OkHttpClient okHttpClient,
-      AccountCredentialsRepository accountCredentialsRepository)
-      throws IOException {
+      AccountCredentialsRepository accountCredentialsRepository) {
 
     for (DatadogManagedAccount account : datadogConfigurationProperties.getAccounts()) {
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
       if (!CollectionUtils.isEmpty(supportedTypes)
           && supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-        // NOT sure if I like this pattern where the remote service is there... wondering if that
-        // shouldn't be something the metrics service determines... but it IS account specific
         account.setDatadogRemoteService(
             createDatadogRemoteService(
                 retrofitClientFactory, objectMapper, account.getBaseUrl(), okHttpClient));
       }
       accountCredentialsRepository.save(account);
     }
-    return new DatadogMetricsService(accountCredentialsRepository);
+    return true;
   }
 
   @VisibleForTesting

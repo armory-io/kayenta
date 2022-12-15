@@ -44,7 +44,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import javax.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,11 +155,8 @@ public class MonitorCanaryTask implements Task, OverridableTimeoutRetryableTask 
 
     String credentialType = "";
     if (context.getMetricsAccountName() != null) {
-      Set<? extends AccountCredentials> allCredentials = accountCredentialsRepository.getAll();
-      Optional<? extends AccountCredentials> credential =
-          allCredentials.stream()
-              .filter(cred -> cred.getName().equals(context.getMetricsAccountName()))
-              .findAny();
+      Optional<AccountCredentials> credential =
+          accountCredentialsRepository.findById(context.getMetricsAccountName());
       if (credential.isPresent()) {
         credentialType = credential.get().getType();
       }

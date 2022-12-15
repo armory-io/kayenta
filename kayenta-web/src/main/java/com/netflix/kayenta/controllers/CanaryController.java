@@ -80,33 +80,31 @@ public class CanaryController {
       @ApiParam @RequestBody final CanaryExecutionRequest canaryExecutionRequest,
       @PathVariable String canaryConfigId)
       throws JsonProcessingException {
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    String resolvedConfigurationAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+    AccountCredentials resolvedConfigurationAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
 
     StorageService configurationService =
-        storageServiceRepository.getRequiredOne(resolvedConfigurationAccountName);
+        storageServiceRepository.getRequiredOne(resolvedStorageAccount);
     CanaryConfig canaryConfig =
-        configurationService.loadObject(
-            resolvedConfigurationAccountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+        (CanaryConfig)
+            configurationService.loadObject(
+                resolvedConfigurationAccount, ObjectType.CANARY_CONFIG, canaryConfigId);
 
     return executionMapper.buildExecution(
         application,
         parentPipelineExecutionId,
         canaryConfigId,
         canaryConfig,
-        resolvedConfigurationAccountName,
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        resolvedConfigurationAccount.getName(),
+        resolvedMetricsAccount.getName(),
+        resolvedStorageAccount.getName(),
         canaryExecutionRequest);
   }
 
@@ -124,14 +122,12 @@ public class CanaryController {
       @ApiParam @RequestBody final CanaryAdhocExecutionRequest canaryAdhocExecutionRequest)
       throws JsonProcessingException {
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedMetricsAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     if (canaryAdhocExecutionRequest.getCanaryConfig() == null) {
       throw new IllegalArgumentException("canaryConfig must be provided for ad-hoc requests");
@@ -146,8 +142,8 @@ public class CanaryController {
         AD_HOC,
         canaryAdhocExecutionRequest.getCanaryConfig(),
         null,
-        resolvedMetricsAccountName,
-        resolvedStorageAccountName,
+        resolvedMetricsAccount.getName(),
+        resolvedStorageAccount.getName(),
         canaryAdhocExecutionRequest.getExecutionRequest());
   }
 
@@ -160,7 +156,7 @@ public class CanaryController {
       @RequestParam(required = false) final String storageAccountName,
       @PathVariable String canaryExecutionId) {
     AccountCredentials storageAccount =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     // First look in the online cache.  If nothing is found there, look in our storage for the ID.
@@ -168,14 +164,10 @@ public class CanaryController {
       return executionMapper.fromExecution(
           executionRepository.retrieve(ExecutionType.PIPELINE, canaryExecutionId));
     } catch (ExecutionNotFoundException e) {
-      StorageService storageService =
-          storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
-
-      return storageService.loadObject(
-          storageAccount,
-          ObjectType.CANARY_RESULT_ARCHIVE.getTypeClass(),
-          ObjectType.CANARY_RESULT_ARCHIVE,
-          canaryExecutionId);
+      StorageService storageService = storageServiceRepository.getRequiredOne(storageAccount);
+      return (CanaryExecutionStatusResponse)
+          storageService.loadObject(
+              storageAccount, ObjectType.CANARY_RESULT_ARCHIVE, canaryExecutionId);
     }
   }
 
@@ -187,13 +179,6 @@ public class CanaryController {
       @RequestParam(value = "page", defaultValue = "1") int page,
       @RequestParam(value = "statuses", required = false) String statuses,
       @RequestParam(required = false) final String storageAccountName) {
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-
-    StorageService storageService =
-        storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
 
     if (StringUtils.isEmpty(statuses)) {
       statuses =

@@ -16,16 +16,11 @@
 
 package com.netflix.kayenta.configbin.config;
 
-import com.netflix.kayenta.configbin.security.ConfigBinAccountCredentials;
-import com.netflix.kayenta.configbin.security.ConfigBinNamedAccountCredentials;
 import com.netflix.kayenta.configbin.service.ConfigBinRemoteService;
-import com.netflix.kayenta.configbin.storage.ConfigBinStorageService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.squareup.okhttp.OkHttpClient;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -47,62 +42,40 @@ public class ConfigBinConfiguration {
   }
 
   @Bean
-  ConfigBinStorageService configBinStorageService(
+  boolean configBinAccountConfig(
       ConfigBinResponseConverter configBinConverter,
       ConfigBinConfigurationProperties configBinConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       OkHttpClient okHttpClient,
       AccountCredentialsRepository accountCredentialsRepository) {
-    log.debug("Created a ConfigBin StorageService");
-    ConfigBinStorageService.ConfigBinStorageServiceBuilder configbinStorageServiceBuilder =
-        ConfigBinStorageService.builder();
-
     for (ConfigBinManagedAccount configBinManagedAccount :
         configBinConfigurationProperties.getAccounts()) {
-      String name = configBinManagedAccount.getName();
-      String ownerApp = configBinManagedAccount.getOwnerApp();
-      String configType = configBinManagedAccount.getConfigType();
-      RemoteService endpoint = configBinManagedAccount.getEndpoint();
-      List<AccountCredentials.Type> supportedTypes = configBinManagedAccount.getSupportedTypes();
+      log.info(
+          "Registering ConfigBin account {} with supported types {}.",
+          configBinManagedAccount.getName(),
+          configBinManagedAccount.getSupportedTypes());
 
-      log.info("Registering ConfigBin account {} with supported types {}.", name, supportedTypes);
-
-      ConfigBinAccountCredentials configbinAccountCredentials =
-          ConfigBinAccountCredentials.builder().build();
-      ConfigBinNamedAccountCredentials.ConfigBinNamedAccountCredentialsBuilder
-          configBinNamedAccountCredentialsBuilder =
-              ConfigBinNamedAccountCredentials.builder()
-                  .name(name)
-                  .ownerApp(ownerApp)
-                  .configType(configType)
-                  .endpoint(endpoint)
-                  .credentials(configbinAccountCredentials);
-
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        if (supportedTypes.contains(AccountCredentials.Type.CONFIGURATION_STORE)) {
+      if (!CollectionUtils.isEmpty(configBinManagedAccount.getSupportedTypes())) {
+        if (configBinManagedAccount
+            .getSupportedTypes()
+            .contains(AccountCredentials.Type.CONFIGURATION_STORE)) {
           ConfigBinRemoteService configBinRemoteService =
               retrofitClientFactory.createClient(
                   ConfigBinRemoteService.class,
                   configBinConverter,
-                  configBinManagedAccount.getEndpoint(),
+                  configBinManagedAccount.getBaseUrl(),
                   okHttpClient);
-          configBinNamedAccountCredentialsBuilder.remoteService(configBinRemoteService);
+          configBinManagedAccount.setConfigBinRemoteService(configBinRemoteService);
         }
-        configBinNamedAccountCredentialsBuilder.supportedTypes(supportedTypes);
       }
 
-      ConfigBinNamedAccountCredentials configbinNamedAccountCredentials =
-          configBinNamedAccountCredentialsBuilder.build();
-      accountCredentialsRepository.save(name, configbinNamedAccountCredentials);
-      configbinStorageServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(configBinManagedAccount);
     }
-
-    ConfigBinStorageService configbinStorageService = configbinStorageServiceBuilder.build();
 
     log.info(
         "Populated ConfigBinStorageService with {} ConfigBin accounts.",
-        configbinStorageService.getAccountNames().size());
+        configBinConfigurationProperties.getAccounts().size());
 
-    return configbinStorageService;
+    return true;
   }
 }

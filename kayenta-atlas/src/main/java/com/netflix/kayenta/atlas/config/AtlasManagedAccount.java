@@ -24,9 +24,11 @@ import java.util.Collections;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.Singular;
 
 @Data
+@NoArgsConstructor
 public class AtlasManagedAccount extends AccountCredentials {
 
   @NotNull private String backendsJsonBaseUrl;
@@ -42,9 +44,9 @@ public class AtlasManagedAccount extends AccountCredentials {
     return "atlas";
   }
 
-  @JsonIgnore private BackendUpdater backendUpdater;
+  @JsonIgnore private transient BackendUpdater backendUpdater;
 
-  @JsonIgnore private AtlasStorageUpdater atlasStorageUpdater;
+  @JsonIgnore private transient AtlasStorageUpdater atlasStorageUpdater;
 
   @Override
   public List<String> getLocations() {

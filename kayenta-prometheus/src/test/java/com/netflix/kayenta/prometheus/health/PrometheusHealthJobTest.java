@@ -19,18 +19,14 @@ package com.netflix.kayenta.prometheus.health;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.netflix.kayenta.prometheus.config.PrometheusConfigurationProperties;
 import com.netflix.kayenta.prometheus.config.PrometheusManagedAccount;
-import com.netflix.kayenta.prometheus.security.PrometheusNamedAccountCredentials;
 import com.netflix.kayenta.prometheus.service.PrometheusRemoteService;
-import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
+import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import java.util.Arrays;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.boot.actuate.health.Status;
@@ -38,40 +34,28 @@ import org.springframework.boot.actuate.health.Status;
 @RunWith(MockitoJUnitRunner.StrictStubs.class)
 public class PrometheusHealthJobTest {
 
+  PrometheusManagedAccount ACCOUNT_1 =
+      PrometheusManagedAccount.builder().name(PROM_ACCOUNT_1).baseUrl("any").build();
+  PrometheusManagedAccount ACCOUNT_2 =
+      PrometheusManagedAccount.builder().name(PROM_ACCOUNT_2).baseUrl("any").build();
   private static final String PROM_ACCOUNT_1 = "a1";
   private static final String PROM_ACCOUNT_2 = "a2";
   @Mock PrometheusRemoteService PROM_REMOTE_1;
   @Mock PrometheusRemoteService PROM_REMOTE_2;
 
-  @Mock PrometheusConfigurationProperties prometheusConfigurationProperties;
-  @Mock AccountCredentialsRepository accountCredentialsRepository;
+  AccountCredentialsRepository accountCredentialsRepository =
+      new MapBackedAccountCredentialsRepository();
   @Mock PrometheusHealthCache healthCache;
 
-  @InjectMocks PrometheusHealthJob healthJob;
+  PrometheusHealthJob healthJob;
 
   @Before
   public void setUp() {
-    when(prometheusConfigurationProperties.getAccounts())
-        .thenReturn(
-            Arrays.asList(
-                getPrometheusManagedAccount(PROM_ACCOUNT_1),
-                getPrometheusManagedAccount(PROM_ACCOUNT_2)));
-
-    when(accountCredentialsRepository.findById(PROM_ACCOUNT_1))
-        .thenReturn(
-            Optional.of(
-                PrometheusNamedAccountCredentials.builder()
-                    .name(PROM_ACCOUNT_1)
-                    .prometheusRemoteService(PROM_REMOTE_1)
-                    .build()));
-
-    when(accountCredentialsRepository.findById(PROM_ACCOUNT_2))
-        .thenReturn(
-            Optional.of(
-                PrometheusNamedAccountCredentials.builder()
-                    .name(PROM_ACCOUNT_2)
-                    .prometheusRemoteService(PROM_REMOTE_2)
-                    .build()));
+    ACCOUNT_1.setPrometheusRemoteService(PROM_REMOTE_1);
+    ACCOUNT_2.setPrometheusRemoteService(PROM_REMOTE_2);
+    accountCredentialsRepository.save(ACCOUNT_2);
+    accountCredentialsRepository.save(ACCOUNT_1);
+    healthJob = new PrometheusHealthJob(accountCredentialsRepository, healthCache);
   }
 
   @Test
@@ -98,7 +82,6 @@ public class PrometheusHealthJobTest {
   public void allRemotesAreDown() {
     when(PROM_REMOTE_1.isHealthy()).thenThrow(new RuntimeException("test 1"));
     when(PROM_REMOTE_2.isHealthy()).thenThrow(new RuntimeException("test 2"));
-
     healthJob.run();
 
     verify(healthCache)
@@ -135,14 +118,5 @@ public class PrometheusHealthJobTest {
                     .status(Status.DOWN)
                     .errorDetails("java.lang.RuntimeException: test 2")
                     .build()));
-  }
-
-  private PrometheusManagedAccount getPrometheusManagedAccount(String name) {
-    PrometheusManagedAccount account = new PrometheusManagedAccount();
-    account.setName(name);
-    RemoteService endpoint = new RemoteService();
-    endpoint.setBaseUrl("any");
-    account.setEndpoint(endpoint);
-    return account;
   }
 }

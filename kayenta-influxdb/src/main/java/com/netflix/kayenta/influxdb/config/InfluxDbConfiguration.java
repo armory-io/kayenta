@@ -16,19 +16,16 @@
 
 package com.netflix.kayenta.influxdb.config;
 
-import com.netflix.kayenta.influxdb.metrics.InfluxDbMetricsService;
-import com.netflix.kayenta.influxdb.metrics.InfluxDbQueryBuilder;
 import com.netflix.kayenta.influxdb.service.InfluxDbRemoteService;
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.spectator.api.Registry;
 import com.squareup.okhttp.OkHttpClient;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +38,7 @@ import org.springframework.util.CollectionUtils;
 public class InfluxDbConfiguration {
   @Bean
   @ConfigurationProperties("kayenta.influxdb")
+  @RefreshScope
   InfluxDbConfigurationProperties influxDbConfigurationProperties() {
     return new InfluxDbConfigurationProperties();
   }
@@ -53,14 +51,12 @@ public class InfluxDbConfiguration {
   }
 
   @Bean
-  MetricsService influxDbMetricsService(
+  boolean influxAccountConfig(
       InfluxDbResponseConverter influxDbResponseConverter,
       InfluxDbConfigurationProperties influxDbConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       OkHttpClient okHttpClient,
-      AccountCredentialsRepository accountCredentialsRepository,
-      Registry registry,
-      InfluxDbQueryBuilder queryBuilder) {
+      AccountCredentialsRepository accountCredentialsRepository) {
 
     for (InfluxDbManagedAccount account : influxDbConfigurationProperties.getAccounts()) {
       List<AccountCredentials.Type> supportedTypes = account.getSupportedTypes();
@@ -82,6 +78,6 @@ public class InfluxDbConfiguration {
     log.info(
         "Populated influxDbMetricsService with {} influxdb accounts.",
         influxDbConfigurationProperties.getAccounts().size());
-    return new InfluxDbMetricsService(accountCredentialsRepository, registry, queryBuilder);
+    return true;
   }
 }

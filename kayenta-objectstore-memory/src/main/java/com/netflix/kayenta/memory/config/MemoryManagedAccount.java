@@ -16,15 +16,30 @@
 
 package com.netflix.kayenta.memory.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.kayenta.security.AccountCredentials;
+import com.netflix.kayenta.storage.ObjectType;
 import java.util.List;
+import java.util.Map;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Singular;
 
 @Data
-public class MemoryManagedAccount {
+@NoArgsConstructor // required for Spring binding
+public class MemoryManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
 
-  private List<AccountCredentials.Type> supportedTypes;
+  @NotNull @Singular private List<AccountCredentials.Type> supportedTypes;
+
+  @JsonIgnore @NotNull private transient Map<ObjectType, Map<String, Object>> objects;
+
+  @JsonIgnore @NotNull private transient Map<ObjectType, Map<String, Map<String, Object>>> metadata;
+
+  @Override
+  public String getType() {
+    return "memory";
+  }
 }

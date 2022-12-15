@@ -17,10 +17,13 @@
 package com.netflix.kayenta.prometheus.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
+import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import org.junit.Test;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -64,7 +67,9 @@ public class PrometheusHealthConfigurationTest {
 
     @Bean
     MetricsService prometheusMetricsService() {
-      return mock(MetricsService.class);
+      MetricsService metricsService = mock(MetricsService.class);
+      when(metricsService.appliesTo(any())).thenReturn(true);
+      return metricsService;
     }
 
     @Bean
@@ -75,7 +80,7 @@ public class PrometheusHealthConfigurationTest {
 
     @Bean
     AccountCredentialsRepository accountCredentialsRepository() {
-      return mock(AccountCredentialsRepository.class);
+      return new MapBackedAccountCredentialsRepository();
     }
   }
 }

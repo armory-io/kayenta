@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -40,11 +41,13 @@ public class AzureConfiguration {
 
   @Bean
   @ConfigurationProperties("kayenta.azure")
+  @RefreshScope
   AzureConfigurationProperties azureConfigurationProperties() {
     return new AzureConfigurationProperties();
   }
 
   @Bean
+  @RefreshScope
   boolean registerAzureCredentials(
       AzureConfigurationProperties azureConfigurationProperties,
       AccountCredentialsRepository accountCredentialsRepository) {

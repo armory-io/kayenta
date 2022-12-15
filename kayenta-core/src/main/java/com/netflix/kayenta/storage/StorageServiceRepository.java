@@ -34,7 +34,7 @@ public class StorageServiceRepository {
   List<StorageService> storageServiceList;
   AccountCredentialsRepository accountCredentialsRepository;
 
-  StorageServiceRepository(
+  public StorageServiceRepository(
       @Autowired AccountCredentialsRepository accountCredentialsRepository,
       @Autowired List<StorageService> storageServiceList) {
     this.accountCredentialsRepository = accountCredentialsRepository;

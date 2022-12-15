@@ -1,6 +1,5 @@
 package com.netflix.kayenta.controllers;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
@@ -13,13 +12,11 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.service.MetricSetPairListService;
-import com.netflix.kayenta.storage.MapBackedStorageServiceRepository;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spectator.api.Registry;
 import com.netflix.spinnaker.orca.pipeline.ExecutionLauncher;
 import com.netflix.spinnaker.orca.pipeline.persistence.ExecutionRepository;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -44,9 +41,12 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @RunWith(SpringRunner.class)
 public abstract class BaseControllerTest {
 
-  protected static final String CONFIGS_ACCOUNT = "configs-account";
-  protected static final String METRICS_STORE = "metrics-store";
-  protected static final String OBJECT_STORE = "object-store";
+  protected static final AccountCredentials CONFIGS_ACCOUNT =
+      new MockAccountCredentials("configs-account", AccountCredentials.Type.CONFIGURATION_STORE);
+  protected static final AccountCredentials METRICS_STORE =
+      new MockAccountCredentials("metrics-store", AccountCredentials.Type.METRICS_STORE);
+  protected static final AccountCredentials OBJECT_STORE =
+      new MockAccountCredentials("object-store", AccountCredentials.Type.OBJECT_STORE);
 
   @MockBean StorageService storageService;
   @MockBean MetricSetPairListService metricSetPairListService;
@@ -69,7 +69,7 @@ public abstract class BaseControllerTest {
   public void setUp() {
     this.mockMvc =
         MockMvcBuilders.webAppContextSetup(this.webApplicationContext).alwaysDo(print()).build();
-    when(storageService.servicesAccount(CONFIGS_ACCOUNT)).thenReturn(true);
+    when(storageService.appliesTo(CONFIGS_ACCOUNT)).thenReturn(true);
   }
 
   @EnableWebMvc
@@ -79,7 +79,7 @@ public abstract class BaseControllerTest {
 
     @Bean
     StorageServiceRepository storageServiceRepository(List<StorageService> storageServices) {
-      return new MapBackedStorageServiceRepository(storageServices);
+      return new StorageServiceRepository(accountCredentialsRepository(), storageServices);
     }
 
     @Bean
@@ -101,26 +101,10 @@ public abstract class BaseControllerTest {
     @Bean
     AccountCredentialsRepository accountCredentialsRepository() {
       MapBackedAccountCredentialsRepository repo = new MapBackedAccountCredentialsRepository();
-      repo.save(
-          CONFIGS_ACCOUNT,
-          getCredentials(CONFIGS_ACCOUNT, AccountCredentials.Type.CONFIGURATION_STORE));
-      repo.save(
-          METRICS_STORE, getCredentials(METRICS_STORE, AccountCredentials.Type.METRICS_STORE));
-      repo.save(OBJECT_STORE, getCredentials(OBJECT_STORE, AccountCredentials.Type.OBJECT_STORE));
+      repo.save(CONFIGS_ACCOUNT);
+      repo.save(METRICS_STORE);
+      repo.save(OBJECT_STORE);
       return repo;
-    }
-
-    private static AccountCredentials getCredentials(
-        String accountName, AccountCredentials.Type type) {
-      return getCredentials(accountName, Collections.singletonList(type));
-    }
-
-    private static AccountCredentials getCredentials(
-        String accountName, List<AccountCredentials.Type> types) {
-      AccountCredentials credentials = mock(AccountCredentials.class);
-      when(credentials.getSupportedTypes()).thenReturn(types);
-      when(credentials.getName()).thenReturn(accountName);
-      return credentials;
     }
   }
 }

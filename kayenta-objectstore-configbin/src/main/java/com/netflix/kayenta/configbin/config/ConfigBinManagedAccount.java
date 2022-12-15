@@ -16,22 +16,46 @@
 
 package com.netflix.kayenta.configbin.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.netflix.kayenta.configbin.service.ConfigBinRemoteService;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Data
-public class ConfigBinManagedAccount {
+@NoArgsConstructor // required for Spring binding
+public class ConfigBinManagedAccount extends AccountCredentials {
 
   @NotNull private String name;
 
-  @NotNull private RemoteService endpoint;
+  @NotNull @Getter @Setter private String baseUrl;
+  @Deprecated @NotNull private RemoteService endpoint;
+
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  @Deprecated()
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    this.baseUrl = endpoint.getBaseUrl();
+  }
 
   @NotNull private String ownerApp;
 
   @NotNull private String configType;
 
   private List<AccountCredentials.Type> supportedTypes;
+
+  @Override
+  public String getType() {
+    return "configbin";
+  }
+
+  @JsonIgnore @Getter @Setter transient ConfigBinRemoteService configBinRemoteService;
 }

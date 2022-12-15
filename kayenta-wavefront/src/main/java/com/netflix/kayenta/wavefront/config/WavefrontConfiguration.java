@@ -16,13 +16,10 @@
 package com.netflix.kayenta.wavefront.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.retrofit.config.RetrofitClientFactory;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.wavefront.metrics.WavefrontMetricsService;
-import com.netflix.kayenta.wavefront.security.WavefrontCredentials;
-import com.netflix.kayenta.wavefront.security.WavefrontNamedAccountCredentials;
 import com.netflix.kayenta.wavefront.service.WavefrontRemoteService;
 import com.squareup.okhttp.OkHttpClient;
 import java.io.IOException;
@@ -48,7 +45,7 @@ public class WavefrontConfiguration {
   }
 
   @Bean
-  MetricsService WavefrontMetricsService(
+  boolean wavefrontAccountConfig(
       WavefrontConfigurationProperties wavefrontConfigurationProperties,
       RetrofitClientFactory retrofitClientFactory,
       ObjectMapper objectMapper,
@@ -65,40 +62,21 @@ public class WavefrontConfiguration {
 
       log.info("Registering Wavefront account {} with supported types {}.", name, supportedTypes);
 
-      WavefrontCredentials wavefrontCredentials =
-          WavefrontCredentials.builder().apiToken(wavefrontManagedAccount.getApiToken()).build();
-      WavefrontNamedAccountCredentials.WavefrontNamedAccountCredentialsBuilder
-          wavefrontNamedAccountCredentialsBuilder =
-              WavefrontNamedAccountCredentials.builder()
-                  .name(name)
-                  .endpoint(wavefrontManagedAccount.getEndpoint())
-                  .credentials(wavefrontCredentials);
+      if (!CollectionUtils.isEmpty(supportedTypes)
+          && supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
+        WavefrontRemoteService wavefrontRemoteService =
+            retrofitClientFactory.createClient(
+                WavefrontRemoteService.class,
+                new JacksonConverter(objectMapper),
+                wavefrontManagedAccount.getBaseUrl(),
+                okHttpClient);
 
-      if (!CollectionUtils.isEmpty(supportedTypes)) {
-        if (supportedTypes.contains(AccountCredentials.Type.METRICS_STORE)) {
-          WavefrontRemoteService wavefrontRemoteService =
-              retrofitClientFactory.createClient(
-                  WavefrontRemoteService.class,
-                  new JacksonConverter(objectMapper),
-                  wavefrontManagedAccount.getEndpoint(),
-                  okHttpClient);
-
-          wavefrontNamedAccountCredentialsBuilder.wavefrontRemoteService(wavefrontRemoteService);
-        }
-
-        wavefrontNamedAccountCredentialsBuilder.supportedTypes(supportedTypes);
+        wavefrontManagedAccount.setWavefrontRemoteService(wavefrontRemoteService);
       }
 
-      WavefrontNamedAccountCredentials wavefrontNamedAccountCredentials =
-          wavefrontNamedAccountCredentialsBuilder.build();
-      accountCredentialsRepository.save(name, wavefrontNamedAccountCredentials);
-      wavefrontMetricsServiceBuilder.accountName(name);
+      accountCredentialsRepository.save(wavefrontManagedAccount);
     }
 
-    WavefrontMetricsService wavefrontMetricsService = wavefrontMetricsServiceBuilder.build();
-    log.info(
-        "Populated WavefrontMetricsService with {} Wavefront accounts.",
-        wavefrontMetricsService.getAccountNames().size());
-    return wavefrontMetricsService;
+    return true;
   }
 }

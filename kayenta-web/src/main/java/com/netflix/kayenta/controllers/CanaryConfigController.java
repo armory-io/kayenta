@@ -23,15 +23,12 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
+import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
 import io.swagger.annotations.ApiOperation;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -40,12 +37,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/canaryConfig")
@@ -55,15 +47,18 @@ public class CanaryConfigController {
   private static final Pattern canaryConfigNamePattern = Pattern.compile("[A-Z,a-z,0-9,\\-,\\_]*");
 
   private final AccountCredentialsRepository accountCredentialsRepository;
+  private final StorageServiceRepository storageServiceRepository;
   private final boolean disableMetricNameValidation;
 
   @Autowired
   public CanaryConfigController(
       AccountCredentialsRepository accountCredentialsRepository,
+      StorageServiceRepository storageServiceRepository,
       @Value("${kayenta.disable.metricname.validation:false}")
           boolean disableMetricNameValidation) {
     this.accountCredentialsRepository = accountCredentialsRepository;
     this.disableMetricNameValidation = disableMetricNameValidation;
+    this.storageServiceRepository = storageServiceRepository;
   }
 
   @ApiOperation(value = "Retrieve a canary config from object storage")
@@ -72,14 +67,11 @@ public class CanaryConfigController {
       @RequestParam(required = false) final String configurationAccountName,
       @PathVariable String canaryConfigId) {
     AccountCredentials credentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
-    StorageService configurationService =
-        credentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
-    CanaryConfig config =
-        configurationService.loadObject(
-            credentials, CanaryConfig.class, ObjectType.CANARY_CONFIG, canaryConfigId);
-    return config;
+    StorageService configurationService = storageServiceRepository.getRequiredOne(credentials);
+    return (CanaryConfig)
+        configurationService.loadObject(credentials, ObjectType.CANARY_CONFIG, canaryConfigId);
   }
 
   @ApiOperation(value = "Write a canary config to object storage")
@@ -89,7 +81,7 @@ public class CanaryConfigController {
       @RequestBody CanaryConfig canaryConfig)
       throws IOException {
     AccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
 
     if (canaryConfig.getCreatedTimestamp() == null) {
@@ -115,15 +107,11 @@ public class CanaryConfigController {
     validateNameAndApplicationAttributes(canaryConfig);
     validateMetricConfigNames(canaryConfig);
 
+    StorageService storageService = storageServiceRepository.getRequiredOne(accountCredentials);
     try {
-      StorageService storageService =
-          accountCredentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
       storageService.loadObject(accountCredentials, ObjectType.CANARY_CONFIG, canaryConfigId);
-
       throw new IllegalArgumentException("Canary config '" + canaryConfigId + "' already exists.");
     } catch (NotFoundException e) {
-      StorageService storageService =
-          accountCredentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
       storageService.storeObject(
           accountCredentials,
           ObjectType.CANARY_CONFIG,
@@ -147,10 +135,9 @@ public class CanaryConfigController {
       @RequestBody CanaryConfig canaryConfig)
       throws IOException {
     AccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
-    StorageService configurationService =
-        accountCredentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
+    StorageService storageService = storageServiceRepository.getRequiredOne(accountCredentials);
 
     canaryConfig.setUpdatedTimestamp(System.currentTimeMillis());
     canaryConfig.setUpdatedTimestampIso(
@@ -160,7 +147,7 @@ public class CanaryConfigController {
     validateMetricConfigNames(canaryConfig);
 
     try {
-      configurationService.loadObject(accountCredentials, ObjectType.CANARY_CONFIG, canaryConfigId);
+      storageService.loadObject(accountCredentials, ObjectType.CANARY_CONFIG, canaryConfigId);
     } catch (Exception e) {
       throw new IllegalArgumentException("Canary config '" + canaryConfigId + "' does not exist.");
     }
@@ -170,7 +157,7 @@ public class CanaryConfigController {
       canaryConfig = canaryConfig.toBuilder().id(canaryConfigId).build();
     }
 
-    configurationService.storeObject(
+    storageService.storeObject(
         accountCredentials,
         ObjectType.CANARY_CONFIG,
         canaryConfigId,
@@ -233,12 +220,11 @@ public class CanaryConfigController {
       @PathVariable String canaryConfigId,
       HttpServletResponse response) {
     AccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
-    StorageService configurationService =
-        accountCredentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
+    StorageService storageService = storageServiceRepository.getRequiredOne(accountCredentials);
 
-    configurationService.deleteObject(accountCredentials, ObjectType.CANARY_CONFIG, canaryConfigId);
+    storageService.deleteObject(accountCredentials, ObjectType.CANARY_CONFIG, canaryConfigId);
 
     response.setStatus(HttpStatus.NO_CONTENT.value());
   }
@@ -249,12 +235,11 @@ public class CanaryConfigController {
       @RequestParam(required = false) final String configurationAccountName,
       @RequestParam(required = false, value = "application") final List<String> applications) {
     AccountCredentials accountCredentials =
-        accountCredentialsRepository.getRequiredOneBy(
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
-    StorageService configurationService =
-        accountCredentials.getServiceForType(AccountCredentials.Type.CONFIGURATION_STORE);
+    StorageService storageService = storageServiceRepository.getRequiredOne(accountCredentials);
 
-    return configurationService.listObjectKeys(
+    return storageService.listObjectKeys(
         accountCredentials, ObjectType.CANARY_CONFIG, applications, false);
   }
 }

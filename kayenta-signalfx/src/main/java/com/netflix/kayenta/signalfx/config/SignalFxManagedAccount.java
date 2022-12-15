@@ -17,27 +17,47 @@
 
 package com.netflix.kayenta.signalfx.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
+import com.netflix.kayenta.signalfx.service.SignalFxSignalFlowRemoteService;
 import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-public class SignalFxManagedAccount {
+@NoArgsConstructor // required for Spring binding
+public class SignalFxManagedAccount extends AccountCredentials {
 
-  @NotNull private String name;
-
-  private String accessToken;
+  @JsonIgnore private String accessToken;
 
   private List<AccountCredentials.Type> supportedTypes =
       Collections.singletonList(AccountCredentials.Type.METRICS_STORE);
 
-  @Nullable private RemoteService endpoint;
+  private String baseUrl;
+  @NotNull private RemoteService endpoint;
+  private SignalFxScopeConfiguration scopeConfiguration;
+
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    this.baseUrl = endpoint.getBaseUrl();
+  }
 
   @Nullable private String defaultScopeKey;
 
   @Nullable private String defaultLocationKey;
+
+  @Override
+  public String getType() {
+    return "signalfx";
+  }
+
+  @JsonIgnore transient SignalFxSignalFlowRemoteService signalFlowService;
 }

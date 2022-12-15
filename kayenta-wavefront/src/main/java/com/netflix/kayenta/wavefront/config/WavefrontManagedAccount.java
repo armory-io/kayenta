@@ -15,18 +15,41 @@
  */
 package com.netflix.kayenta.wavefront.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.kayenta.retrofit.config.RemoteService;
 import com.netflix.kayenta.security.AccountCredentials;
+import com.netflix.kayenta.wavefront.service.WavefrontRemoteService;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Data
-public class WavefrontManagedAccount {
+@NoArgsConstructor
+public class WavefrontManagedAccount extends AccountCredentials {
   @NotNull private String name;
   private String apiToken;
 
+  @Getter @Setter private String baseUrl;
   @NotNull private RemoteService endpoint;
 
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  public void setEndpoint(RemoteService endpoint) {
+    this.endpoint = endpoint;
+    this.baseUrl = endpoint.getBaseUrl();
+  }
+
   private List<AccountCredentials.Type> supportedTypes;
+
+  @Override
+  public String getType() {
+    return "wavefront";
+  }
+
+  @JsonIgnore transient WavefrontRemoteService wavefrontRemoteService;
 }

@@ -25,9 +25,11 @@ import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Data
+@NoArgsConstructor // required for Spring binding
 public class InfluxDbManagedAccount extends AccountCredentials {
   @NotNull private String name;
   private String apiKey;

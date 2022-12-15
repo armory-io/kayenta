@@ -23,7 +23,7 @@ import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.QueryConfigUtils;
 import com.netflix.kayenta.canary.providers.metrics.StackdriverCanaryMetricSetQueryConfig;
-import com.netflix.kayenta.google.security.GoogleNamedAccountCredentials;
+import com.netflix.kayenta.google.config.GoogleManagedAccount;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentials;
@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +47,7 @@ import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class StackdriverMetricsService implements MetricsService<GoogleNamedAccountCredentials> {
+public class StackdriverMetricsService implements MetricsService<GoogleManagedAccount> {
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;
 
@@ -63,7 +64,7 @@ public class StackdriverMetricsService implements MetricsService<GoogleNamedAcco
 
   @Override
   public String buildQuery(
-      GoogleNamedAccountCredentials credentialsAccount,
+      GoogleManagedAccount credentialsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -243,7 +244,7 @@ public class StackdriverMetricsService implements MetricsService<GoogleNamedAcco
 
   @Override
   public List<MetricSet> queryMetrics(
-      GoogleNamedAccountCredentials stackdriverCredentials,
+      GoogleManagedAccount stackdriverCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
@@ -298,7 +299,8 @@ public class StackdriverMetricsService implements MetricsService<GoogleNamedAcco
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String filter = buildQuery(metricsAccountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String filter =
+        buildQuery(stackdriverCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
     long alignmentPeriodSec = stackdriverCanaryScope.getStep();
     Monitoring.Projects.TimeSeries.List list =
@@ -432,7 +434,7 @@ public class StackdriverMetricsService implements MetricsService<GoogleNamedAcco
   }
 
   @Override
-  public List<Map> getMetadata(GoogleNamedAccountCredentials credentials, String filter) {
+  public List<Map> getMetadata(GoogleManagedAccount credentials, String filter) {
     if (!StringUtils.hasText(filter)) {
       String lowerCaseFilter = filter.toLowerCase();
 
@@ -446,15 +448,20 @@ public class StackdriverMetricsService implements MetricsService<GoogleNamedAcco
     }
   }
 
+  @Override
+  public boolean appliesTo(AccountCredentials account) {
+    return account instanceof GoogleManagedAccount
+        && account.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE);
+  }
+
   @Scheduled(fixedDelayString = "#{@stackdriverConfigurationProperties.metadataCachingIntervalMS}")
   public void updateMetricDescriptorsCache() throws IOException {
     Set<AccountCredentials> accountCredentialsSet =
         accountCredentialsRepository.getAllOf(AccountCredentials.Type.METRICS_STORE);
 
     for (AccountCredentials credentials : accountCredentialsSet) {
-      if (credentials instanceof GoogleNamedAccountCredentials) {
-        GoogleNamedAccountCredentials stackdriverCredentials =
-            (GoogleNamedAccountCredentials) credentials;
+      if (credentials instanceof GoogleManagedAccount) {
+        GoogleManagedAccount stackdriverCredentials = (GoogleManagedAccount) credentials;
         ListMetricDescriptorsResponse listMetricDescriptorsResponse =
             stackdriverCredentials
                 .getMonitoring()

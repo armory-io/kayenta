@@ -22,12 +22,12 @@ import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.providers.metrics.DatadogCanaryMetricSetQueryConfig;
 import com.netflix.kayenta.canary.providers.metrics.QueryConfigUtils;
 import com.netflix.kayenta.datadog.config.DatadogManagedAccount;
+import com.netflix.kayenta.datadog.model.DatadogMetricDescriptor;
+import com.netflix.kayenta.datadog.model.DatadogMetricDescriptorsResponse;
 import com.netflix.kayenta.datadog.service.DatadogRemoteService;
 import com.netflix.kayenta.datadog.service.DatadogTimeSeries;
 import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
-import com.netflix.kayenta.model.DatadogMetricDescriptor;
-import com.netflix.kayenta.model.DatadogMetricDescriptorsResponse;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import java.io.IOException;
@@ -38,11 +38,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 @Slf4j
 @RequiredArgsConstructor
+@Component
 public class DatadogMetricsService implements MetricsService<DatadogManagedAccount> {
 
   @Autowired private final AccountCredentialsRepository accountCredentialsRepository;

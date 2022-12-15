@@ -20,13 +20,11 @@ import com.netflix.kayenta.atlas.backends.AtlasStorageUpdater;
 import com.netflix.kayenta.atlas.backends.AtlasStorageUpdaterService;
 import com.netflix.kayenta.atlas.backends.BackendUpdater;
 import com.netflix.kayenta.atlas.backends.BackendUpdaterService;
-import com.netflix.kayenta.atlas.metrics.AtlasMetricsService;
-import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -37,34 +35,23 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class AtlasConfiguration {
 
-  private final AtlasStorageUpdaterService atlasStorageUpdaterService;
-  private final BackendUpdaterService backendUpdaterService;
-
-  @Autowired
-  public AtlasConfiguration(
-      AtlasStorageUpdaterService atlasStorageUpdaterService,
-      BackendUpdaterService backendUpdaterService) {
-    this.atlasStorageUpdaterService = atlasStorageUpdaterService;
-    this.backendUpdaterService = backendUpdaterService;
-  }
-
   @Bean
   @ConfigurationProperties("kayenta.atlas")
+  @RefreshScope
   AtlasConfigurationProperties atlasConfigurationProperties() {
     return new AtlasConfigurationProperties();
   }
 
   @Bean
-  MetricsService atlasMetricsService(
-      AtlasConfigurationProperties atlasConfigurationProperties,
-      AccountCredentialsRepository accountCredentialsRepository) {
-    AtlasMetricsService atlasMetricsService = AtlasMetricsService.builder().build();
-
-    for (AtlasManagedAccount atlasManagedAccount : atlasConfigurationProperties.getAccounts()) {
-      String name = atlasManagedAccount.getName();
+  public boolean configureAtlasAccounts(
+      AccountCredentialsRepository accountCredentialsRepository,
+      AtlasConfigurationProperties accountConfig,
+      AtlasStorageUpdaterService atlasStorageUpdaterService,
+      BackendUpdaterService backendUpdaterService) {
+    for (AtlasManagedAccount atlasManagedAccount : accountConfig.getAccounts()) {
       log.info(
-          "Registering Atlas account {} with supported types {}.",
-          name,
+          "Configuring account {} for type of {}",
+          atlasManagedAccount.getName(),
           atlasManagedAccount.getSupportedTypes());
       BackendUpdater backendUpdater =
           BackendUpdater.builder().uri(atlasManagedAccount.getBackendsJsonBaseUrl()).build();
@@ -74,10 +61,8 @@ public class AtlasConfiguration {
       atlasManagedAccount.setAtlasStorageUpdater(atlasStorageUpdater);
       backendUpdaterService.add(backendUpdater);
       atlasStorageUpdaterService.add(atlasStorageUpdater);
-
       accountCredentialsRepository.save(atlasManagedAccount);
     }
-
-    return atlasMetricsService;
+    return true;
   }
 }

@@ -65,8 +65,7 @@ public class AtlasFetchController {
       @ApiParam(defaultValue = "300") @RequestParam Long step)
       throws IOException {
     AccountCredentials resolvedMetricsAccount =
-        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
-            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+        accountCredentialsRepository.getRequiredOne(metricsAccountName);
     AccountCredentials resolvedStorageAccount =
         accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
             storageAccountName, AccountCredentials.Type.OBJECT_STORE);
