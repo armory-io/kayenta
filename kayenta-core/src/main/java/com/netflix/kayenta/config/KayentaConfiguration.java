@@ -25,20 +25,17 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.netflix.kayenta.atlas.config.KayentaSerializationConfigurationProperties;
 import com.netflix.kayenta.canary.CanaryMetricSetQueryConfig;
-import com.netflix.kayenta.metrics.MapBackedMetricsServiceRepository;
 import com.netflix.kayenta.metrics.MetricSetMixerService;
 import com.netflix.kayenta.metrics.MetricsRetryConfigurationProperties;
+import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.metrics.MetricsServiceRepository;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.security.MapBackedAccountCredentialsRepository;
 import com.netflix.kayenta.service.MetricSetPairListService;
-import com.netflix.kayenta.storage.MapBackedStorageServiceRepository;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
 import com.netflix.spinnaker.kork.jackson.ObjectMapperSubtypeConfigurer;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -72,8 +69,9 @@ public class KayentaConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(MetricsServiceRepository.class)
-  MetricsServiceRepository metricsServiceRepository() {
-    return new MapBackedMetricsServiceRepository();
+  MetricsServiceRepository metricsServiceRepository(
+      List<MetricsService> services, AccountCredentialsRepository accountCredentialsRepository) {
+    return new MetricsServiceRepository(accountCredentialsRepository, services);
   }
 
   @Bean
@@ -85,8 +83,8 @@ public class KayentaConfiguration {
   @Bean
   @ConditionalOnMissingBean(StorageServiceRepository.class)
   StorageServiceRepository storageServiceRepository(
-      @Autowired(required = false) Optional<List<StorageService>> storageServices) {
-    return new MapBackedStorageServiceRepository(storageServices.orElse(Collections.emptyList()));
+      List<StorageService> storageServices, AccountCredentialsRepository repo) {
+    return new StorageServiceRepository(repo, storageServices);
   }
 
   @Bean

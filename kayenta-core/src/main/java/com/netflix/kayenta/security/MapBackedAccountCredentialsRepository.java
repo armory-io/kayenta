@@ -16,11 +16,12 @@
 
 package com.netflix.kayenta.security;
 
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class MapBackedAccountCredentialsRepository implements AccountCredentialsRepository {
 
@@ -28,25 +29,63 @@ public class MapBackedAccountCredentialsRepository implements AccountCredentials
       new ConcurrentHashMap<>();
 
   @Override
-  @SuppressWarnings("unchecked")
-  public <T extends AccountCredentials> Optional<T> getOne(String accountName) {
-    return Optional.ofNullable((T) accountNameToCredentialsMap.get(accountName));
+  public AccountCredentials save(AccountCredentials entity) {
+    return accountNameToCredentialsMap.put(entity.getName(), entity);
   }
 
   @Override
-  public Optional<AccountCredentials> getOne(AccountCredentials.Type credentialsType) {
+  public <S extends AccountCredentials> Iterable<S> saveAll(Iterable<S> entities) {
+    entities.forEach(s -> accountNameToCredentialsMap.put(s.getName(), s));
+    return entities;
+  }
+
+  @Override
+  public Optional<AccountCredentials> findById(String s) {
+    return Optional.ofNullable(accountNameToCredentialsMap.get(s));
+  }
+
+  @Override
+  public boolean existsById(String s) {
+    return accountNameToCredentialsMap.containsKey(s);
+  }
+
+  @Override
+  public Iterable<AccountCredentials> findAll() {
+    return accountNameToCredentialsMap.values();
+  }
+
+  @Override
+  public Iterable<AccountCredentials> findAllById(Iterable<String> strings) {
+    Collection<String> accounts =
+        StreamSupport.stream(strings.spliterator(), false).collect(Collectors.toList());
     return accountNameToCredentialsMap.values().stream()
-        .filter(a -> a.getSupportedTypes().contains(credentialsType))
-        .findFirst();
+        .filter(it -> accounts.contains(it.getName()))
+        .collect(Collectors.toSet());
   }
 
   @Override
-  public Set<AccountCredentials> getAll() {
-    return new HashSet<>(accountNameToCredentialsMap.values());
+  public long count() {
+    return accountNameToCredentialsMap.size();
   }
 
   @Override
-  public AccountCredentials save(String name, AccountCredentials credentials) {
-    return accountNameToCredentialsMap.put(credentials.getName(), credentials);
+  public void deleteById(String s) {
+    accountNameToCredentialsMap.remove(s);
+  }
+
+  @Override
+  public void delete(AccountCredentials entity) {
+
+    accountNameToCredentialsMap.remove(entity.getName());
+  }
+
+  @Override
+  public void deleteAll(Iterable<? extends AccountCredentials> entities) {
+    entities.forEach(accountNameToCredentialsMap::remove);
+  }
+
+  @Override
+  public void deleteAll() {
+    accountNameToCredentialsMap.clear();
   }
 }

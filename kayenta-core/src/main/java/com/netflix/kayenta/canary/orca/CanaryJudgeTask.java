@@ -56,10 +56,10 @@ public class CanaryJudgeTask implements RetryableTask {
       ObjectMapper kayentaObjectMapper,
       ExecutionMapper executionMapper) {
     this.accountCredentialsRepository = accountCredentialsRepository;
-    this.storageServiceRepository = storageServiceRepository;
     this.canaryJudges = canaryJudges;
     this.objectMapper = kayentaObjectMapper;
     this.executionMapper = executionMapper;
+    this.storageServiceRepository = storageServiceRepository;
   }
 
   @Override
@@ -79,23 +79,22 @@ public class CanaryJudgeTask implements RetryableTask {
   public TaskResult execute(@Nonnull StageExecution stage) {
     Map<String, Object> context = stage.getContext();
     String storageAccountName = (String) context.get("storageAccountName");
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
-    String metricSetPairListId = (String) context.get("metricSetPairListId");
     Map<String, String> orchestratorScoreThresholdsMap =
         (Map<String, String>) context.get("orchestratorScoreThresholds");
+    String metricSetPairListId = (String) context.get("metricSetPairListId");
+
+    AccountCredentials resolvedStorageAccount =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
     CanaryClassifierThresholdsConfig orchestratorScoreThresholds =
         objectMapper.convertValue(
             orchestratorScoreThresholdsMap, CanaryClassifierThresholdsConfig.class);
-    StorageService storageService =
-        storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
-
+    StorageService storageService = storageServiceRepository.getRequiredOne(resolvedStorageAccount);
     CanaryConfig canaryConfig = executionMapper.getCanaryConfig(stage.getExecution());
     List<MetricSetPair> metricSetPairList =
-        storageService.loadObject(
-            resolvedStorageAccountName, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
+        (List<MetricSetPair>)
+            storageService.loadObject(
+                resolvedStorageAccount, ObjectType.METRIC_SET_PAIR_LIST, metricSetPairListId);
     CanaryJudgeConfig canaryJudgeConfig = canaryConfig.getJudge();
     CanaryJudge canaryJudge = null;
 

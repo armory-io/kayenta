@@ -45,7 +45,7 @@ public class TestableBlobsStorageServiceTest {
 
   private String rootFolder = "testRootFolder";
   private TestableBlobsStorageService testBlobsStorageService;
-  private AccountCredentials accountCredentials;
+  private AccountCredentials<AzureManagedAccount> accountCredentials;
   private AccountCredentialsRepository credentialsRepository;
   private CanaryConfigIndex mockedCanaryConfigIndex;
 
@@ -105,7 +105,7 @@ public class TestableBlobsStorageServiceTest {
       testBlobsStorageService.blobStored.put("application", applications.get(0));
 
       CanaryConfig result =
-          testBlobsStorageService.loadObject(accountName, objectType, testItemKey);
+          testBlobsStorageService.loadObject(accountCredentials, objectType, testItemKey);
       Assert.assertEquals(applications.get(0), result.getApplications().get(0));
     } catch (IllegalArgumentException e) {
       Assert.assertEquals("Unable to resolve account " + accountName + ".", e.getMessage());
@@ -147,7 +147,7 @@ public class TestableBlobsStorageServiceTest {
     try {
       log.info(String.format("Running storeObjectTest for (%s)", fakeBlobName));
       testBlobsStorageService.storeObject(
-          accountName, objectType, testItemKey, canaryConfig, fakeFileName, isAnUpdate);
+          accountCredentials, objectType, testItemKey, canaryConfig, fakeFileName, isAnUpdate);
       HashMap<String, String> result = testBlobsStorageService.blobStored;
       Assert.assertEquals(fakeBlobName, result.get("blob"));
     } catch (IllegalArgumentException e) {
@@ -193,7 +193,8 @@ public class TestableBlobsStorageServiceTest {
     try {
       log.info("Running listObjectKeysTest for rootFolder" + "/" + objectType.getGroup() + "/");
       List<Map<String, Object>> result =
-          testBlobsStorageService.listObjectKeys(accountName, objectType, applications, skipIndex);
+          testBlobsStorageService.listObjectKeys(
+              accountCredentials, objectType, applications, skipIndex);
       if (objectType == ObjectType.CANARY_CONFIG) {
         Assert.assertEquals("canary_test", result.get(0).get("name"));
       } else {

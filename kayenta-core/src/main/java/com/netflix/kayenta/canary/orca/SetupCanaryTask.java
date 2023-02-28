@@ -72,16 +72,16 @@ public class SetupCanaryTask implements RetryableTask {
     } else {
       String canaryConfigId = (String) context.get("canaryConfigId");
       String configurationAccountName = (String) context.get("configurationAccountName");
-      String resolvedConfigurationAccountName =
-          accountCredentialsRepository
-              .getRequiredOneBy(
-                  configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE)
-              .getName();
+      AccountCredentials resolvedConfigurationAccount =
+          accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+              configurationAccountName, AccountCredentials.Type.CONFIGURATION_STORE);
       StorageService configurationService =
-          storageServiceRepository.getRequiredOne(resolvedConfigurationAccountName);
+          storageServiceRepository.getRequiredOne(resolvedConfigurationAccount);
+
       CanaryConfig canaryConfig =
-          configurationService.loadObject(
-              resolvedConfigurationAccountName, ObjectType.CANARY_CONFIG, canaryConfigId);
+          (CanaryConfig)
+              configurationService.loadObject(
+                  resolvedConfigurationAccount, ObjectType.CANARY_CONFIG, canaryConfigId);
       outputs = Collections.singletonMap("canaryConfig", canaryConfig);
     }
 

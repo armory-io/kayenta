@@ -16,34 +16,41 @@
 
 package com.netflix.kayenta.storage;
 
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
 import java.util.List;
 import java.util.Map;
 
-public interface StorageService {
+public interface StorageService<Y> {
   boolean servicesAccount(String accountName);
 
-  <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
+  <T> T loadObject(
+      AccountCredentials<Y> accountCredentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException;
 
   <T> void storeObject(
-      String accountName,
+      AccountCredentials<Y> accountCredentials,
       ObjectType objectType,
       String objectKey,
       T obj,
       String filename,
       boolean isAnUpdate);
 
-  void deleteObject(String accountName, ObjectType objectType, String objectKey);
+  void deleteObject(AccountCredentials<Y> credentials, ObjectType objectType, String objectKey);
 
   List<Map<String, Object>> listObjectKeys(
-      String accountName, ObjectType objectType, List<String> applications, boolean skipIndex);
+      AccountCredentials<Y> credentials,
+      ObjectType objectType,
+      List<String> applications,
+      boolean skipIndex);
 
-  default <T> void storeObject(String accountName, ObjectType objectType, String objectKey, T obj) {
-    storeObject(accountName, objectType, objectKey, obj, null, true);
+  default <T> void storeObject(
+      AccountCredentials<Y> credentials, ObjectType objectType, String objectKey, T obj) {
+    storeObject(credentials, objectType, objectKey, obj, null, true);
   }
 
-  default List<Map<String, Object>> listObjectKeys(String accountName, ObjectType objectType) {
-    return listObjectKeys(accountName, objectType, null, false);
+  default List<Map<String, Object>> listObjectKeys(
+      AccountCredentials<Y> credentials, ObjectType objectType) {
+    return listObjectKeys(credentials, objectType, null, false);
   }
 }

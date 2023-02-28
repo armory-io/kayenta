@@ -54,10 +54,9 @@ public class MetricsServiceMetadataController {
       @RequestParam(required = false) final String metricsAccountName,
       @RequestParam(required = false) final String filter)
       throws IOException {
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
+
+    AccountCredentials resolvedMetricsAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+
     MetricsService metricsService =
         metricsServiceRepository.getRequiredOne(resolvedMetricsAccountName);
 

@@ -19,6 +19,7 @@ package com.netflix.kayenta.metrics;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
@@ -41,33 +42,33 @@ import retrofit.RetrofitError;
 @Component
 @Slf4j
 public class SynchronousQueryProcessor {
-  private final MetricsServiceRepository metricsServiceRepository;
-  private final StorageServiceRepository storageServiceRepository;
   private final Registry registry;
   private final MetricsRetryConfigurationProperties retryConfiguration;
+  private final MetricsServiceRepository metricsRepo;
+  private final StorageServiceRepository storageServiceRepo;
 
   @Autowired
   public SynchronousQueryProcessor(
-      MetricsServiceRepository metricsServiceRepository,
-      StorageServiceRepository storageServiceRepository,
       Registry registry,
-      MetricsRetryConfigurationProperties retryConfiguration) {
-    this.metricsServiceRepository = metricsServiceRepository;
-    this.storageServiceRepository = storageServiceRepository;
+      MetricsRetryConfigurationProperties retryConfiguration,
+      MetricsServiceRepository metricsRepo,
+      StorageServiceRepository storageServiceRepository) {
     this.registry = registry;
     this.retryConfiguration = retryConfiguration;
+    this.metricsRepo = metricsRepo;
+    this.storageServiceRepo = storageServiceRepository;
   }
 
   public String executeQuery(
-      String metricsAccountName,
-      String storageAccountName,
+      AccountCredentials metricsAccount,
+      AccountCredentials storageAccount,
       CanaryConfig canaryConfig,
       int metricIndex,
       CanaryScope canaryScope)
       throws IOException {
-    MetricsService metricsService = metricsServiceRepository.getRequiredOne(metricsAccountName);
+    MetricsService metricsService = metricsRepo.getRequiredOne(metricsAccount);
 
-    StorageService storageService = storageServiceRepository.getRequiredOne(storageAccountName);
+    StorageService storageService = storageServiceRepo.getRequiredOne(storageAccount);
 
     Id queryId =
         registry
@@ -86,7 +87,7 @@ public class SynchronousQueryProcessor {
         registry.counter(queryId.withTag("retries", retries + "")).increment();
         metricSetList =
             metricsService.queryMetrics(
-                metricsAccountName, canaryConfig, canaryMetricConfig, canaryScope);
+                metricsAccount, canaryConfig, canaryMetricConfig, canaryScope);
         success = true;
       } catch (RetrofitError e) {
 
@@ -134,7 +135,7 @@ public class SynchronousQueryProcessor {
     String metricSetListId = UUID.randomUUID() + "";
 
     storageService.storeObject(
-        storageAccountName, ObjectType.METRIC_SET_LIST, metricSetListId, metricSetList);
+        storageAccount, ObjectType.METRIC_SET_LIST, metricSetListId, metricSetList);
 
     return metricSetListId;
   }
@@ -169,8 +170,8 @@ public class SynchronousQueryProcessor {
   }
 
   public Map<String, ?> processQueryAndReturnMap(
-      String metricsAccountName,
-      String storageAccountName,
+      AccountCredentials metricsServiceCredentials,
+      AccountCredentials storageServiceCredentials,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       int metricIndex,
@@ -182,33 +183,38 @@ public class SynchronousQueryProcessor {
     }
 
     if (dryRun) {
-      MetricsService metricsService = metricsServiceRepository.getRequiredOne(metricsAccountName);
+
+      MetricsService metricsService = metricsRepo.getRequiredOne(metricsServiceCredentials);
 
       String query =
           metricsService.buildQuery(
-              metricsAccountName, canaryConfig, canaryMetricConfig, canaryScope);
+              metricsServiceCredentials, canaryConfig, canaryMetricConfig, canaryScope);
 
       return Collections.singletonMap("query", query);
     } else {
       String metricSetListId =
           executeQuery(
-              metricsAccountName, storageAccountName, canaryConfig, metricIndex, canaryScope);
+              metricsServiceCredentials,
+              storageServiceCredentials,
+              canaryConfig,
+              metricIndex,
+              canaryScope);
 
       return Collections.singletonMap("metricSetListId", metricSetListId);
     }
   }
 
   public TaskResult executeQueryAndProduceTaskResult(
-      String metricsAccountName,
-      String storageAccountName,
+      AccountCredentials metricsAccount,
+      AccountCredentials storageAccount,
       CanaryConfig canaryConfig,
       int metricIndex,
       CanaryScope canaryScope) {
     try {
       Map<String, ?> outputs =
           processQueryAndReturnMap(
-              metricsAccountName,
-              storageAccountName,
+              metricsAccount,
+              storageAccount,
               canaryConfig,
               null /* canaryMetricConfig */,
               metricIndex,

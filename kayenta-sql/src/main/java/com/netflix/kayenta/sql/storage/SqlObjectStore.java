@@ -1,0 +1,56 @@
+/*
+ * Copyright 2023 Netflix, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.netflix.kayenta.sql.storage;
+
+import com.netflix.kayenta.security.AccountCredentials;
+import com.netflix.kayenta.storage.ObjectType;
+import com.netflix.kayenta.storage.StorageService;
+import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class SqlObjectStore implements StorageService {
+
+    @Override
+    public boolean servicesAccount(String accountName) {
+        return true;
+    }
+
+    @Override
+    public void deleteObject(AccountCredentials credentials, ObjectType objectType, String objectKey) {
+
+    }
+
+    @Override
+    public List<Map<String, Object>> listObjectKeys(AccountCredentials credentials, ObjectType objectType, List applications, boolean skipIndex) {
+        return null;
+    }
+
+    @Override
+    public void storeObject(AccountCredentials accountCredentials, ObjectType objectType, String objectKey, Object obj, String filename, boolean isAnUpdate) {
+
+    }
+
+    @Override
+    public Object loadObject(AccountCredentials accountCredentials, ObjectType objectType, String objectKey) throws IllegalArgumentException, NotFoundException {
+        return null;
+    }
+
+}

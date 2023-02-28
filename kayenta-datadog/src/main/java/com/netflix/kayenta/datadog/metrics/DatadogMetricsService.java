@@ -28,6 +28,7 @@ import com.netflix.kayenta.metrics.MetricSet;
 import com.netflix.kayenta.metrics.MetricsService;
 import com.netflix.kayenta.model.DatadogMetricDescriptor;
 import com.netflix.kayenta.model.DatadogMetricDescriptorsResponse;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.spectator.api.Registry;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -71,13 +73,12 @@ public class DatadogMetricsService implements MetricsService {
 
   @Override
   public String buildQuery(
-      String metricsAccountName,
+      AccountCredentials metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
 
-    DatadogCanaryMetricSetQueryConfig queryConfig =
-        (DatadogCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
+    DatadogCanaryMetricSetQueryConfig queryConfig = (DatadogCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
     String[] baseScopeAttributes = new String[] {"scope", "location"};
 
     String customFilter =
@@ -93,13 +94,12 @@ public class DatadogMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-      String accountName,
+          AccountCredentials metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException {
-    DatadogManagedAccount accountCredentials =
-        accountCredentialsRepository.getRequiredOne(accountName);
+    DatadogManagedAccount accountCredentials = (DatadogManagedAccount) metricsAccount;
 
     DatadogRemoteService remoteService = accountCredentials.getDatadogRemoteService();
 
@@ -111,7 +111,7 @@ public class DatadogMetricsService implements MetricsService {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String query = buildQuery(accountName, canaryConfig, canaryMetricConfig, canaryScope);
+    String query = buildQuery(accountCredentials, canaryConfig, canaryMetricConfig, canaryScope);
     DatadogTimeSeries timeSeries =
         remoteService.getTimeSeries(
             accountCredentials.getApiKey(),
@@ -155,7 +155,7 @@ public class DatadogMetricsService implements MetricsService {
   }
 
   @Override
-  public List<Map> getMetadata(String metricsAccountName, String filter) {
+  public List<Map> getMetadata(AccountCredentials metricsAccount, String filter) {
     if (!StringUtils.isEmpty(filter)) {
       String lowerCaseFilter = filter.toLowerCase();
 
@@ -174,7 +174,7 @@ public class DatadogMetricsService implements MetricsService {
 
   @Scheduled(fixedDelayString = "#{@datadogConfigurationProperties.metadataCachingIntervalMS}")
   public void updateMetricDescriptorsCache() {
-    accountCredentialsRepository.getAll().stream()
+    StreamSupport.stream(accountCredentialsRepository.findAll().spliterator(), true)
         //            .filter(each ->
         // each.getSupportedTypes().contains(AccountCredentials.Type.METRICS_STORE)) // ONLY metrics
         // stores for datadog accounts...

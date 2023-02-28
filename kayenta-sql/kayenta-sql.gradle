@@ -1,0 +1,7 @@
+dependencies {
+  implementation project(":kayenta-core")
+
+  implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+  api "io.spinnaker.kork:kork-sql"
+  api 'javax.persistence:javax.persistence-api:2.2'
+}

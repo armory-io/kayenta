@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.codehaus.groovy.runtime.InvokerHelper.asList;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -32,9 +31,11 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.LOCKED;
 
+import com.netflix.kayenta.MockAccountCredentials;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.kayenta.storage.StorageServiceRepository;
@@ -58,8 +59,10 @@ import retrofit.client.Response;
 @RunWith(MockitoJUnitRunner.StrictStubs.class)
 public class SynchronousQueryProcessorTest {
 
-  private static final String METRICS = "metrics-account";
-  private static final String STORAGE = "storage-account";
+  private static final AccountCredentials METRICS =
+      new MockAccountCredentials("metrics-account", AccountCredentials.Type.METRICS_STORE);
+  private static final AccountCredentials STORAGE =
+      new MockAccountCredentials("storage-account", AccountCredentials.Type.OBJECT_STORE);
   private static final int ATTEMPTS = 5;
   @Mock MetricsRetryConfigurationProperties retryConfiguration;
 
@@ -90,10 +93,7 @@ public class SynchronousQueryProcessorTest {
   @Test
   public void retriesRetryableHttpSeriesTillMaxAttemptsAndThrowsException() throws IOException {
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(getRetrofitErrorWithHttpStatus(INTERNAL_SERVER_ERROR.value()));
 
     assertThatThrownBy(
@@ -108,10 +108,7 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(ATTEMPTS))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verifyZeroInteractions(storageService);
   }
 
@@ -119,10 +116,7 @@ public class SynchronousQueryProcessorTest {
   public void retriesRetryableHttpSeriesAndReturnsSuccessfulResponse() throws IOException {
     List response = asList(mock(MetricSet.class));
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(getRetrofitErrorWithHttpStatus(INTERNAL_SERVER_ERROR.value()))
         .thenThrow(getRetrofitErrorWithHttpStatus(BAD_GATEWAY.value()))
         .thenThrow(getRetrofitErrorWithHttpStatus(HttpStatus.TEMPORARY_REDIRECT.value()))
@@ -133,10 +127,7 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(4))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verify(storageService)
         .storeObject(eq(STORAGE), eq(ObjectType.METRIC_SET_LIST), any(), eq(response));
   }
@@ -145,10 +136,7 @@ public class SynchronousQueryProcessorTest {
   public void retriesRetryableHttpStatusAndReturnsSuccessfulResponse() throws IOException {
     List response = asList(mock(MetricSet.class));
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(getRetrofitErrorWithHttpStatus(LOCKED.value()))
         .thenThrow(getRetrofitErrorWithHttpStatus(LOCKED.value()))
         .thenThrow(getRetrofitErrorWithHttpStatus(LOCKED.value()))
@@ -159,10 +147,7 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(4))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verify(storageService)
         .storeObject(eq(STORAGE), eq(ObjectType.METRIC_SET_LIST), any(), eq(response));
   }
@@ -170,10 +155,7 @@ public class SynchronousQueryProcessorTest {
   @Test
   public void doesNotRetryNonRetryableHttpStatusAndThrowsException() throws IOException {
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(getRetrofitErrorWithHttpStatus(BAD_REQUEST.value()));
 
     assertThatThrownBy(
@@ -188,20 +170,14 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(1))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verifyZeroInteractions(storageService);
   }
 
   @Test
   public void retriesIoExceptionTillMaxAttemptsAndThrowsException() throws IOException {
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(new IOException());
 
     assertThatThrownBy(
@@ -216,20 +192,14 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(ATTEMPTS))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verifyZeroInteractions(storageService);
   }
 
   @Test
   public void retriesNetworkErrorTillMaxAttemptsAndThrowsException() throws IOException {
     when(metricsService.queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class)))
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class)))
         .thenThrow(RetrofitError.networkError("url", new SocketTimeoutException()));
 
     assertThatThrownBy(
@@ -244,10 +214,7 @@ public class SynchronousQueryProcessorTest {
 
     verify(metricsService, times(ATTEMPTS))
         .queryMetrics(
-            anyString(),
-            any(CanaryConfig.class),
-            any(CanaryMetricConfig.class),
-            any(CanaryScope.class));
+            any(), any(CanaryConfig.class), any(CanaryMetricConfig.class), any(CanaryScope.class));
     verifyZeroInteractions(storageService);
   }
 

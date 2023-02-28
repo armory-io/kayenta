@@ -80,10 +80,8 @@ public class MetricSetMixerServiceTask implements RetryableTask {
         getMetricSetListIds(stage.getExecution(), (String) context.get("controlRefidPrefix"));
     List<String> experimentMetricSetListIds =
         getMetricSetListIds(stage.getExecution(), (String) context.get("experimentRefidPrefix"));
-    String resolvedAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+    AccountCredentials resolvedAccountName =
+        accountCredentialsRepository.getRequiredOne(storageAccountName);
     StorageService storageService = storageServiceRepository.getRequiredOne(resolvedAccountName);
 
     CanaryConfig canaryConfig = executionMapper.getCanaryConfig(stage.getExecution());

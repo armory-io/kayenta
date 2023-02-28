@@ -118,14 +118,10 @@ public class PrometheusFetchController {
         determineDefaultProperty(
             end, "end", prometheusConfigurationTestControllerDefaultProperties);
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+
+      AccountCredentials resolvedMetricsAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+      AccountCredentials resolvedStorageAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+
 
     PrometheusCanaryMetricSetQueryConfig.PrometheusCanaryMetricSetQueryConfigBuilder
         prometheusCanaryMetricSetQueryConfigBuilder =

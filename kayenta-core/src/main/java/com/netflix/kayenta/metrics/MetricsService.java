@@ -19,6 +19,7 @@ package com.netflix.kayenta.metrics;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.canary.CanaryMetricConfig;
 import com.netflix.kayenta.canary.CanaryScope;
+import com.netflix.kayenta.security.AccountCredentials;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +31,7 @@ public interface MetricsService {
   boolean servicesAccount(String accountName);
 
   default String buildQuery(
-      String metricsAccountName,
+      AccountCredentials metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
@@ -38,13 +39,14 @@ public interface MetricsService {
   }
 
   List<MetricSet> queryMetrics(
-      String accountName,
+      AccountCredentials metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
       throws IOException;
 
-  default List<Map> getMetadata(String metricsAccountName, String filter) throws IOException {
+  default List<Map> getMetadata(AccountCredentials metricsAccount, String filter)
+      throws IOException {
     return Collections.emptyList();
   }
 }

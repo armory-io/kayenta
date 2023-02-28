@@ -16,49 +16,38 @@
 
 package com.netflix.kayenta.security;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.util.StringUtils;
+import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.repository.CrudRepository;
 
-public interface AccountCredentialsRepository {
+public interface AccountCredentialsRepository extends CrudRepository<AccountCredentials, String> {
 
-  <T extends AccountCredentials> Optional<T> getOne(String accountName);
-
-  default <T extends AccountCredentials> T getRequiredOne(String accountName) {
-    Optional<T> one = getOne(accountName);
-    return one.orElseThrow(
-        () -> new IllegalArgumentException("Unable to resolve account " + accountName + "."));
-  }
-
-  default AccountCredentials getRequiredOneBy(
+  /*
+  This does a "If the account is blank, lookup the first available of given type.  SHOULD ONLY be used for storage/config store type accounts
+  IF account isn't blank, it's a wrapper to getRequiredOne which REQUIRES the account to exist or blows up
+   */
+  default AccountCredentials getAccountOrFirstOfTypeWhenEmptyAccount(
       String accountName, AccountCredentials.Type accountType) {
-
-    if (StringUtils.hasLength(accountName)) {
-      return getRequiredOne(accountName);
-    } else {
-      return getOne(accountType)
-          .orElseThrow(
-              () ->
-                  new IllegalArgumentException(
-                      "Unable to resolve account of type " + accountType + "."));
+    if (StringUtils.isBlank(accountName)) {
+      return getAllOf(accountType).stream().findFirst().orElseThrow();
     }
+    return getRequiredOne(accountName);
   }
 
   default Set<AccountCredentials> getAllOf(AccountCredentials.Type credentialsType) {
-    return getAll().stream()
-        .filter(credentials -> credentials.getSupportedTypes().contains(credentialsType))
+    return StreamSupport.stream(findAll().spliterator(), true)
+        .filter(
+            accountCredentials -> accountCredentials.getSupportedTypes().contains(credentialsType))
         .collect(Collectors.toSet());
   }
 
-  Optional<AccountCredentials> getOne(AccountCredentials.Type credentialsType);
-
-  Set<? extends AccountCredentials> getAll();
-
-  @Deprecated
-  AccountCredentials save(String name, AccountCredentials credentials);
-
-  default AccountCredentials save(AccountCredentials credentials) {
-    return save(credentials.getName(), credentials);
+  default AccountCredentials getRequiredOne(String accountName) {
+    return findById(accountName)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format("Unable to resolve account %s.", accountName)));
   }
 }

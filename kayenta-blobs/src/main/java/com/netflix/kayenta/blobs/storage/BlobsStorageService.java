@@ -30,6 +30,7 @@ import com.netflix.kayenta.azure.config.AzureManagedAccount;
 import com.netflix.kayenta.canary.CanaryConfig;
 import com.netflix.kayenta.index.CanaryConfigIndex;
 import com.netflix.kayenta.index.config.CanaryConfigIndexAction;
+import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
@@ -48,7 +49,7 @@ import org.springframework.util.StringUtils;
 
 @Builder
 @Slf4j
-public class BlobsStorageService implements StorageService {
+public class BlobsStorageService implements StorageService<AzureManagedAccount> {
 
   @NotNull @Singular @Getter private List<String> accountNames;
 
@@ -64,13 +65,14 @@ public class BlobsStorageService implements StorageService {
   }
 
   @Override
-  public <T> T loadObject(String accountName, ObjectType objectType, String objectKey)
+  public <T> T loadObject(
+      AccountCredentials<AzureManagedAccount> credentials, ObjectType objectType, String objectKey)
       throws IllegalArgumentException, NotFoundException {
-    AzureManagedAccount credentials = accountCredentialsRepository.getRequiredOne(accountName);
-    CloudBlobContainer azureContainer = credentials.getAzureContainer();
+    CloudBlobContainer azureContainer = credentials.getCredentials().getAzureContainer();
     CloudBlockBlob blobItem;
     try {
-      blobItem = resolveSingularBlob(objectType, objectKey, credentials, azureContainer);
+      blobItem =
+          resolveSingularBlob(objectType, objectKey, credentials.getCredentials(), azureContainer);
     } catch (IllegalArgumentException e) {
       throw new NotFoundException(e.getMessage());
     }
@@ -131,13 +133,13 @@ public class BlobsStorageService implements StorageService {
 
   @Override
   public <T> void storeObject(
-      String accountName,
+      AccountCredentials<AzureManagedAccount> accountCredentials,
       ObjectType objectType,
       String objectKey,
       T obj,
       String filename,
       boolean isAnUpdate) {
-    AzureManagedAccount credentials = accountCredentialsRepository.getRequiredOne(accountName);
+    AzureManagedAccount credentials = accountCredentials.getCredentials();
     CloudBlobContainer azureContainer = credentials.getAzureContainer();
     String path = keyToPath(credentials, objectType, objectKey, filename);
 
@@ -248,7 +250,8 @@ public class BlobsStorageService implements StorageService {
 
   @Override
   public void deleteObject(String accountName, ObjectType objectType, String objectKey) {
-    AzureManagedAccount credentials = accountCredentialsRepository.getRequiredOne(accountName);
+    AzureManagedAccount credentials =
+        (AzureManagedAccount) accountCredentialsRepository.getRequiredOne(accountName);
     CloudBlobContainer azureContainer = credentials.getAzureContainer();
     CloudBlockBlob item = resolveSingularBlob(objectType, objectKey, credentials, azureContainer);
 

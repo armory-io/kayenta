@@ -16,25 +16,26 @@
 
 package com.netflix.kayenta.newrelic.controller;
 
-import static com.netflix.kayenta.canary.util.FetchControllerUtils.determineDefaultProperty;
-import static com.netflix.kayenta.newrelic.canary.NewRelicCanaryScopeFactory.LOCATION_KEY_KEY;
-import static com.netflix.kayenta.newrelic.canary.NewRelicCanaryScopeFactory.SCOPE_KEY_KEY;
-
 import com.netflix.kayenta.metrics.SynchronousQueryProcessor;
 import com.netflix.kayenta.newrelic.canary.NewRelicCanaryScope;
 import com.netflix.kayenta.newrelic.config.NewRelicConfigurationTestControllerDefaultProperties;
 import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import io.swagger.annotations.ApiParam;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Optional;
-import javax.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+
+import static com.netflix.kayenta.canary.util.FetchControllerUtils.determineDefaultProperty;
+import static com.netflix.kayenta.newrelic.canary.NewRelicCanaryScopeFactory.LOCATION_KEY_KEY;
+import static com.netflix.kayenta.newrelic.canary.NewRelicCanaryScopeFactory.SCOPE_KEY_KEY;
 
 @RestController
 @RequestMapping("/fetch/newrelic")
@@ -98,14 +99,10 @@ public class NewRelicFetchController {
       throw new IllegalArgumentException("End time is required.");
     }
 
-    String resolvedMetricsAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(metricsAccountName, AccountCredentials.Type.METRICS_STORE)
-            .getName();
-    String resolvedStorageAccountName =
-        accountCredentialsRepository
-            .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-            .getName();
+
+      AccountCredentials resolvedMetricsAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+      AccountCredentials resolvedStorageAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(storageAccountName, AccountCredentials.Type.OBJECT_STORE);
+
 
     NewRelicCanaryScope canaryScope = new NewRelicCanaryScope();
     canaryScope.setScope(scope);

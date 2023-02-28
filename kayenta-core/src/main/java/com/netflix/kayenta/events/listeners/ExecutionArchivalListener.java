@@ -16,7 +16,6 @@
 package com.netflix.kayenta.events.listeners;
 
 import com.netflix.kayenta.events.CanaryExecutionCompletedEvent;
-import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageServiceRepository;
@@ -52,9 +51,7 @@ public class ExecutionArchivalListener {
     var storageAccountName = response.getStorageAccountName();
     if (storageAccountName != null) {
       var resolvedStorageAccountName =
-          accountCredentialsRepository
-              .getRequiredOneBy(storageAccountName, AccountCredentials.Type.OBJECT_STORE)
-              .getName();
+          accountCredentialsRepository.getRequiredOne(storageAccountName);
 
       var storageService = storageServiceRepository.getRequiredOne(resolvedStorageAccountName);
 
