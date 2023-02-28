@@ -20,37 +20,41 @@ import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.storage.ObjectType;
 import com.netflix.kayenta.storage.StorageService;
 import com.netflix.spinnaker.kork.web.exceptions.NotFoundException;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SqlObjectStore implements StorageService {
 
-    @Override
-    public boolean servicesAccount(String accountName) {
-        return true;
-    }
+  @Override
+  public boolean servicesAccount(String accountName) {
+    return true;
+  }
 
-    @Override
-    public void deleteObject(AccountCredentials credentials, ObjectType objectType, String objectKey) {
+  @Override
+  public void deleteObject(
+      AccountCredentials credentials, ObjectType objectType, String objectKey) {}
 
-    }
+  @Override
+  public List<Map<String, Object>> listObjectKeys(
+      AccountCredentials credentials, ObjectType objectType, List applications, boolean skipIndex) {
+    return null;
+  }
 
-    @Override
-    public List<Map<String, Object>> listObjectKeys(AccountCredentials credentials, ObjectType objectType, List applications, boolean skipIndex) {
-        return null;
-    }
+  @Override
+  public void storeObject(
+      AccountCredentials accountCredentials,
+      ObjectType objectType,
+      String objectKey,
+      Object obj,
+      String filename,
+      boolean isAnUpdate) {}
 
-    @Override
-    public void storeObject(AccountCredentials accountCredentials, ObjectType objectType, String objectKey, Object obj, String filename, boolean isAnUpdate) {
-
-    }
-
-    @Override
-    public Object loadObject(AccountCredentials accountCredentials, ObjectType objectType, String objectKey) throws IllegalArgumentException, NotFoundException {
-        return null;
-    }
-
+  @Override
+  public Object loadObject(
+      AccountCredentials accountCredentials, ObjectType objectType, String objectKey)
+      throws IllegalArgumentException, NotFoundException {
+    return null;
+  }
 }

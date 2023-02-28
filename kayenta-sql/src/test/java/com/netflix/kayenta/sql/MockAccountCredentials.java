@@ -17,13 +17,12 @@
 package com.netflix.kayenta.sql;
 
 import com.netflix.kayenta.security.AccountCredentials;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.Arrays;
-import java.util.List;
 @SuperBuilder
 @Getter
 @Setter
@@ -41,6 +40,4 @@ public class MockAccountCredentials extends AccountCredentials<MockAccountCreden
   public String getType() {
     return "test-creds";
   }
-
-
 }

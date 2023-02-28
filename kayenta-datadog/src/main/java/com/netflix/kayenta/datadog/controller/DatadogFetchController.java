@@ -83,10 +83,12 @@ public class DatadogFetchController {
             start, "start", datadogConfigurationTestControllerDefaultProperties);
     end = determineDefaultProperty(end, "end", datadogConfigurationTestControllerDefaultProperties);
 
-
-      AccountCredentials resolvedMetricsAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(metricsAccountName, AccountCredentials.Type.METRICS_STORE);
-      AccountCredentials resolvedStorageAccountName = accountCredentialsRepository .getAccountOrFirstOfTypeWhenEmptyAccount(storageAccountName, AccountCredentials.Type.OBJECT_STORE);
-
+    AccountCredentials resolvedMetricsAccountName =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            metricsAccountName, AccountCredentials.Type.METRICS_STORE);
+    AccountCredentials resolvedStorageAccountName =
+        accountCredentialsRepository.getAccountOrFirstOfTypeWhenEmptyAccount(
+            storageAccountName, AccountCredentials.Type.OBJECT_STORE);
 
     DatadogCanaryMetricSetQueryConfig datadogCanaryMetricSetQueryConfig =
         DatadogCanaryMetricSetQueryConfig.builder().metricName(metricName).build();

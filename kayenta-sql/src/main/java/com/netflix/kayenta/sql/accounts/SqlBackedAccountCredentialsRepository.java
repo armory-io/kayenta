@@ -21,9 +21,9 @@ import com.netflix.kayenta.security.AccountCredentialsRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 
-//Frankly this is not needed IF we actually do a JPA... but for now... this sets upa  SINGLE table with the Credentials as a single JSON column
+// Frankly this is not needed IF we actually do a JPA... but for now... this sets upa  SINGLE table
+// with the Credentials as a single JSON column
 // The JPA argument is... each type of credentials should have it's own table/data/etc. and
 @Component
-public interface SqlBackedAccountCredentialsRepository extends AccountCredentialsRepository, JpaRepository<AccountCredentials, String> {
-
-}
+public interface SqlBackedAccountCredentialsRepository
+    extends AccountCredentialsRepository, JpaRepository<AccountCredentials, String> {}

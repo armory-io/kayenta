@@ -27,7 +27,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement
 public class SqlConfiguration {
 
-    //TODO: Need to write a credentials parser to handle & load sensitive data from external properties (aka SSM)
-    //TODO: Define JPA defaults from kork
+  // TODO: Need to write a credentials parser to handle & load sensitive data from external
+  // properties (aka SSM)
+  // TODO: Define JPA defaults from kork
 
 }

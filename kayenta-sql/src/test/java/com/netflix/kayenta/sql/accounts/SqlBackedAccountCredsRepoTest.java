@@ -16,25 +16,14 @@
 
 package com.netflix.kayenta.sql.accounts;
 
-import com.netflix.kayenta.security.AccountCredentials;
 import com.netflix.kayenta.security.AccountCredentialsRepository;
-import com.netflix.kayenta.sql.MockAccountCredentials;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-
-import javax.annotation.PostConstruct;
-import java.util.List;
-
-import static junit.framework.TestCase.assertEquals;
 
 @Configuration
 @ComponentScan("com.netflix.kayenta.sql")
 public class SqlBackedAccountCredsRepoTest {
 
-    @Autowired
-    AccountCredentialsRepository repository;
-
-
+  @Autowired AccountCredentialsRepository repository;
 }

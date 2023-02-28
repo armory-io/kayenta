@@ -16,45 +16,38 @@
 
 package com.netflix.kayenta.sql.accounts;
 
-import com.netflix.kayenta.security.AccountCredentials;
+import static junit.framework.TestCase.assertEquals;
+
 import com.netflix.kayenta.sql.MockAccountCredentials;
+import java.util.List;
+import javax.annotation.PostConstruct;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.TestPropertySource;
-
-import javax.annotation.PostConstruct;
-import java.util.List;
-
-import static junit.framework.TestCase.assertEquals;
 
 @SpringBootTest(properties = "sql.enabled=true")
 public class IntegrationTestDataTest {
 
+  @Autowired SqlBackedAccountCredentialsRepository repository;
+  MockAccountCredentials accountCredentials;
 
-    @Autowired
-    SqlBackedAccountCredentialsRepository repository;
-    MockAccountCredentials accountCredentials;
+  @PostConstruct
+  public void verifyCanReadBasicDataAndWriteIt() {
+    accountCredentials =
+        MockAccountCredentials.builder()
+            .name("test-account")
+            .locations(List.of("someplace"))
+            .sensitiveData("doNOTUseInAPI")
+            .nonSensitiveData("shouldbeInApi")
+            .build();
+    repository.save(accountCredentials);
+  }
 
-    @PostConstruct
-    public void verifyCanReadBasicDataAndWriteIt() {
-        accountCredentials = MockAccountCredentials.builder()
-                .name("test-account")
-                .locations(List.of("someplace"))
-                .sensitiveData("doNOTUseInAPI")
-                .nonSensitiveData("shouldbeInApi")
-                .build();
-         repository.save(accountCredentials);
-
-
-    }
-
-    @Test
-    public void verifyCanReadRepo() {
-        MockAccountCredentials creds = (MockAccountCredentials) repository.findById("test-account").orElseThrow();
-        // When writing to the database, make SURE we have ALL THe data persisted.
-        assertEquals(creds, accountCredentials);
-    }
-
+  @Test
+  public void verifyCanReadRepo() {
+    MockAccountCredentials creds =
+        (MockAccountCredentials) repository.findById("test-account").orElseThrow();
+    // When writing to the database, make SURE we have ALL THe data persisted.
+    assertEquals(creds, accountCredentials);
+  }
 }

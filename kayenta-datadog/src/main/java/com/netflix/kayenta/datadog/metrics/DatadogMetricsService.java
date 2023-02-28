@@ -78,7 +78,8 @@ public class DatadogMetricsService implements MetricsService {
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope) {
 
-    DatadogCanaryMetricSetQueryConfig queryConfig = (DatadogCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
+    DatadogCanaryMetricSetQueryConfig queryConfig =
+        (DatadogCanaryMetricSetQueryConfig) canaryMetricConfig.getQuery();
     String[] baseScopeAttributes = new String[] {"scope", "location"};
 
     String customFilter =
@@ -94,7 +95,7 @@ public class DatadogMetricsService implements MetricsService {
 
   @Override
   public List<MetricSet> queryMetrics(
-          AccountCredentials metricsAccount,
+      AccountCredentials metricsAccount,
       CanaryConfig canaryConfig,
       CanaryMetricConfig canaryMetricConfig,
       CanaryScope canaryScope)
